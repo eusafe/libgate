@@ -1,5 +1,9 @@
 
 
+#ifndef _LIBGATE_H
+#define _LIBGATE_H 1
+
+
 
 //#pragma PACK(1)
 
@@ -42,6 +46,8 @@ typedef struct cmd_send_t  {
 } cmd_send_t;
 
 
+#include "gp_layer.h"
+#include "ad_target.h"
 
 // Util
 uint8_t crc8_xor(uint8_t* p, int l);
@@ -72,4 +78,6 @@ int qdump();
 int gp_queue_init();
 
 extern int debug;
+
+#endif /*_LIBGATE_H  */
 

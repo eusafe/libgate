@@ -1,3 +1,5 @@
+#ifndef _AD_TARGET_H
+#define _AD_TARGET_H 1
 
 
 #define AD_Q_SHORT	0
@@ -57,3 +59,4 @@ int ad_set_times(int q, int gp_dst,gp_times_t* t);
 int ad_get_date(int q, int gp_dst);
 int ad_set_date(int q, int gp_dst, gp_date_rtc_t* d);
 
+#endif /* _LIBGATE_H */

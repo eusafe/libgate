@@ -4,7 +4,7 @@
  * 
  * Designed by Evgeny Byrganov <eu dot safeschool at gmail dot com> for safeschool.ru, 2012
  *  
- * $Id$
+ * $Id: gp_queue.c 2692 2012-08-17 13:36:51Z eu $
  *
  */
 
@@ -17,8 +17,6 @@
 #include <string.h>
 
 #include "libgate.h"
-#include "gp_layer.h"
-#include "ad_target.h"
 
 // queue for 
 TAILQ_HEAD(gp_circleq, gp_queue) gp_head, gp_head2;
@@ -104,15 +102,15 @@ int qdump() {
 	struct gp_queue* i;
 	
 	fprintf(stderr,"qdump, head: 0x%X, tqh_first=0x%X, tqh_last=0x%X\n",
-		p,
-		p->tqh_first,
-		p->tqh_last
+		(uintptr_t)p,
+		(uintptr_t)p->tqh_first,
+		(uintptr_t)p->tqh_last
 	);
 	TAILQ_FOREACH(i,p,entries) {
 		fprintf(stderr,"for 0x%X,   next: 0x%X, prev: 0x%X\n",
-			i, 
-			i->entries.tqe_next,
-			i->entries.tqe_prev
+			(uintptr_t)i, 
+			(uintptr_t)i->entries.tqe_next,
+			(uintptr_t)i->entries.tqe_prev
 		);
 	}	
 	return 1;

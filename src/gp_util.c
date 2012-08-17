@@ -4,7 +4,7 @@
  * 
  * Designed by Evgeny Byrganov <eu dot safeschool at gmail dot com> for safeschool.ru, 2012
  *  
- * $Id$
+ * $Id: gp_util.c 2692 2012-08-17 13:36:51Z eu $
  *
  */
 
@@ -17,8 +17,6 @@
 #include <time.h>
 
 #include "libgate.h"
-#include "gp_layer.h"
-#include "ad_target.h"
 
 uint8_t crc8_xor(uint8_t* p, int l) {
 	uint8_t r=*p;

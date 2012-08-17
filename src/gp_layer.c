@@ -4,7 +4,7 @@
  * 
  * Designed by Evgeny Byrganov <eu dot safeschool at gmail dot com> for safeschool.ru, 2012
  *  
- * $Id$
+ * $Id: gp_layer.c 2692 2012-08-17 13:36:51Z eu $
  *
  */
 
@@ -30,8 +30,6 @@
 int open_port(char* path, int speed);
 
 #include "libgate.h"
-#include "gp_layer.h"
-#include "ad_target.h"
 
 struct event evport;
 
@@ -105,7 +103,7 @@ typedef struct gp_dev {
 } gp_dev;
 gp_dev  devices[256];
 
-void close_port ();
+void gp_close ();
 
 void print_buff(char*  mess, uint8_t* buff, int n) {	
 	fprintf(stderr, mess);
@@ -118,7 +116,7 @@ void print_buff(char*  mess, uint8_t* buff, int n) {
 // send message to port
 int gp_resend () {
 	int nwritten;
-	int i=0;
+//	int i=0;
 
  	if(gp_cfg.fd < 3) exit (100+gp_cfg.fd);
 	
@@ -144,12 +142,12 @@ int gp_resend () {
 	if (nwritten == 0) {
 		if (errno == EPIPE) {
 			syslog(LOG_ERR, "recipient closed connection");
-			close_port();
+			gp_close();
 			// daemon_exit(1); // never exit on error!
 		}
 	} else if (nwritten < 0) {
 		syslog(LOG_CRIT, "write (%d): %m", errno);
-		close_port();
+		gp_close();
 		// daemon_exit(1); // never exit on error!
 	}
 //	if ( event_add(&evport, NULL) < 0) syslog(LOG_ERR, "evport,event_add setup: %m");
@@ -345,7 +343,7 @@ int process_port_input() {
  		gp_port_status_t t;
  		memcpy(&t,receiv_mess.cmd_buff,( (receiv_mess.len <= sizeof t )? receiv_mess.len : 4));
  	} else if ( receiv_mess.cmd_n == 0x06 ) {
- 		gp_reg_cid_t* t=receiv_mess.cmd_buff;
+ 		gp_reg_cid_t* t=(gp_reg_cid_t*)receiv_mess.cmd_buff;
 		uint8_t cid[20];
  		bin2hex(cid,t->cid,6,devices[gp_cfg.last_dev].cid_revert);
  		if( devices[gp_cfg.last_dev].new_cid_flag == 1 || devices[gp_cfg.last_dev].last_ev != t->ev ) {
@@ -374,7 +372,7 @@ int process_port_input() {
   		fprintf(stderr, "cid: 0x%012llX\n",  htobe64(cid << 16));*/\
   		if( gp_cfg.last_target == AD_TARGET_GET_CID ){
 			uint8_t t[20]= {'0','0','0','0'};
-			int l=bin2hex(&t,receiv_mess.cmd_buff,( (receiv_mess.len <= 6)? receiv_mess.len : 6), devices[gp_cfg.last_dev].cid_revert);
+			int l=bin2hex(&t,&receiv_mess.cmd_buff,( (receiv_mess.len <= 6)? receiv_mess.len : 6), devices[gp_cfg.last_dev].cid_revert);
 			if( memcmp(devices[gp_cfg.last_dev].last_cid,t,l) != 0 ) {
 				memcpy(devices[gp_cfg.last_dev].last_cid,t,l);
 				memcpy(devices[gp_cfg.last_dev].last_cid_n,receiv_mess.cmd_buff,l);
@@ -465,7 +463,7 @@ void gp_receiv(int fd, short event, void *arg) {
 		);*/
 //	char buf[PORT_READ_BUF_LENGTH];
 	
-//	reconnect(1);
+//	gp_reconnect(1);
 
 //	memset(buf, 0, sizeof(buf));
 				
@@ -543,21 +541,21 @@ void gp_receiv(int fd, short event, void *arg) {
 	
 	if (nread < 0) { /* EOF */
 		syslog(LOG_CRIT, "read: %m");
-		close_port();
+		gp_close();
 		// daemon_exit(1); // never exit on error!
 	} else if (nread == 0) {
 //		syslog(LOG_ERR, "port socket unexpectedly closed");
 	 	fprintf(stderr, "port unexpectedly closed\n");
-		reconnect(1);
-//		close_port();
+		gp_reconnect(1);
+//		gp_close();
 		return;
 	} else if (nread > 0) {
 		// right trim buffer
 		receiv_buf_p[nread] = '\0';
 		if( receiv_mess.fl_begin !=  GP_INIT) {
 			syslog(LOG_ERR, "Begin flag not found");
-			reconnect(1);
-//			close_port();
+			gp_reconnect(1);
+//			gp_close();
 			return;
 		}		
 		uint8_t* p=memchr(receiv_buf_p, GP_END,nread);
@@ -615,7 +613,7 @@ void gp_receiv(int fd, short event, void *arg) {
 // fprintf(stderr, "gp_receiv ok \n");
 }
 
-void close_port () {
+void gp_close () {
 	if (gp_cfg.fd >= 0) {
 		syslog(LOG_ERR, "closing controller port %m");
 //		if ( event_del(&evport) < 0) syslog(LOG_ERR, "event_del (port): %m");
@@ -625,11 +623,12 @@ void close_port () {
 }
 
 // try to reconnect to switch socket and/or main controller port if closed
-int reconnect (int ignore_timeout) {
+int gp_reconnect (int ignore_timeout) {
 	time_t now = time((time_t*)NULL);
+	static time_t last_try=(time_t)0;
 	static int portIsOpen=1; /* '1' Need for first open_port() call problem */
 
-//	if (ignore_timeout || (last_try < now - SOCKET_RETRY_TIMEOUT)) {
+	if (ignore_timeout || (now - SOCKET_RETRY_TIMEOUT > last_try )) {
 		last_try = now;
 		if (gp_cfg.fd < 0) {
 //			dprint(DL5, "trying to [re]connect to controller\n");
@@ -649,7 +648,7 @@ int reconnect (int ignore_timeout) {
 				portIsOpen=1;
 			}
 		}
-//	}
+	}
 	if( gp_cfg.fd < 0 ) 
 		return 0;
 	else
@@ -660,12 +659,11 @@ int gp_init () {
 	int i;
 	for(i=1;i<=255;i++) {
 //		devices[i].bound_tocken=0x2000;
-		devices[i].bound_tocken=0x00C0;
+		devices[i].bound_tocken=GP_SPART_TICKET_BOUND;
 	}
  	event_set(&gp_cfg.ev_scan, -1 , EV_TIMEOUT|EV_PERSIST, gp_all_dev_ev, (void*)&gp_cfg.ev_scan);
  	gp_all_dev_ev(0,0,0);
 	// connect to controller port and switch socket immediately
-	reconnect(1);
+	gp_reconnect(1);
 	return 1;
-
 }

@@ -1,3 +1,10 @@
+#ifndef _GP_LAYER_H
+#define _GP_LAYER_H 1
+
+
+#define GP_SPART_TICKET_BOUND 0x00C0
+#define GP_SPART_TICKET_SIZE 8
+
 #pragma pack(push,1)
 
 typedef union gp_cid_t {
@@ -176,4 +183,5 @@ struct tm* get_rtc_date(gp_date_rtc_t* d);
 struct tm* get_ev_date(gp_event_t* d);
 time_t get_ev_time(gp_event_t* d);
 
+#endif /* _GP_LAYER_H */
 

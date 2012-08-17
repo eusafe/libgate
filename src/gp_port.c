@@ -4,7 +4,7 @@
  * 
  * Designed by Evgeny Byrganov <eu dot safeschool at gmail dot com> for safeschool.ru, 2012
  *  
- * $Id$
+ * $Id: gp_port.c 2691 2012-08-16 11:14:06Z eu $
  *
  */
 

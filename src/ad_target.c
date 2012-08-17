@@ -4,7 +4,7 @@
  * 
  * Designed by Evgeny Byrganov <eu dot safeschool at gmail dot com> for safeschool.ru, 2012
  *  
- * $Id$
+ * $Id: ad_target.c 2692 2012-08-17 13:36:51Z eu $
  *
  */
 
@@ -18,8 +18,6 @@
 #include <sys/queue.h>
 
 #include "libgate.h"
-#include "gp_layer.h"
-#include "ad_target.h"
 
 int ad_get_info(int q, int gp_dst) {
 	cmd_send_t z = {
@@ -104,6 +102,7 @@ int ad_exchange(int q, int gp_dst, int new_dst) {
 	z.cmd_buff[5]=new_dst;
 	if (gp_in_cmd(&z) > 0)
 		return ad_soft_reset(q,gp_dst);
+	return 0;
 	
 /*	if( q == AD_Q_SHORT ) 
 		return gp_send(&z);
@@ -206,11 +205,9 @@ int ad_set_buff_addr_down(int q, int gp_dst, uint16_t addr) {
 		.data_len = 7,
 		.cmd_buff = { 0x00, 0xD0, 2, 0x00, 0x0A}
 	};
-	int i;
 	z.dst=gp_dst;
 	z.queue=q;
 	uint16_t a=htobe16(addr);
-//	fprintf(stderr, "ev: new bound=0x%04X \n", a);
 	memcpy(&z.cmd_buff[5],&a,2);
 	if( q == AD_Q_SHORT ) 
 		return gp_send(&z);
@@ -261,8 +258,8 @@ int ad_reset_token_bound(int q, int gp_dst) {
 		z.bank=1;
 		z.cmd_buff[0]=0x01;
 		r|=gp_in_cmd(&z);
-		return r;
 	}
+	return r;
 }
 
 int ad_get_token_bound(int q, int gp_dst) {
@@ -289,9 +286,8 @@ int ad_get_token_bound(int q, int gp_dst) {
 		z.bank=1;
 		z.cmd_buff[0]=0x01;
 		r|=gp_in_cmd(&z);
-		return r;
 	}
-	
+	return r;
 }
 
 int ad_set_token_bound(int q, int gp_dst, uint16_t addr) {
@@ -426,9 +422,8 @@ int ad_set_times(int q, int gp_dst,gp_times_t* t) {
 		z.bank=1;
 		z.cmd_buff[0]=0x01;
 		r|=gp_in_cmd(&z);
-		return r;
 	}
-	
+	return r;
 }
 
 

@@ -1,3 +1,6 @@
+#ifndef _EV_H
+#define _EV_H
+
 //  Нажата кнопка открывания двери 
 #define GP_EV_OPEN 00h
 // Ключ не найден в банке ключей
@@ -64,3 +67,5 @@
 #define GP_EV_ 034h
 // Залипание на GND контакта считывателя DATA1 
 #define GP_EV_ 036h
+
+#endif /* _EV_H */

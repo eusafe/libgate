@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile 1833 2010-12-23 09:06:14Z eu $
+# $Id: Makefile 2692 2012-08-17 13:36:51Z eu $
 #
 
 CFLAGS=-Wall 
@@ -36,4 +36,4 @@ gp_layer.o : gp_layer.c gp_layer.h  ad_target.h libgate.h
 
 
 clean :
-	-rm *.o  *~
+	-rm *.o  *~ libgate.a
