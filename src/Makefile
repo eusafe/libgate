@@ -16,8 +16,8 @@ endif
 
 
 #gp_port.c 
-SRC=gp_layer.c gp_queue.c ad_target.c gp_util.c gp_port.c
-OBJ=$(addsuffix .o,$(basename $(SRC))) $(OBJ_MODULES)
+SRC=gp_layer.c gp_queue.c ad_target.c gp_util.c gp_port.c ad_cmd.c gp_processor.c
+OBJ=$(addsuffix .o,$(basename $(SRC)))
 
 all : libgate.a
 

@@ -96,8 +96,9 @@ typedef struct gp_dev {
 	uint16_t bound_up;
 	uint16_t bound_down;
 	uint16_t bound_tocken;
-	uint8_t last_cid[20];
-	uint8_t last_cid_n[8];
+	uint64_t last_cid;
+//	uint8_t last_cid[20];
+//	uint8_t last_cid_n[8];
 	int last_ev;
 	int new_cid_flag;
 } gp_dev;
@@ -321,7 +322,6 @@ struct {
 uint8_t* receiv_buf_p=0;
 
 int process_port_input() {
-//	static uint8_t last_cid[20]="";
 	if( debug >= 5 || (debug >= 4 && gp_cfg.polling == 0)  ) {
 		fprintf(stderr, "cmd_buff: "); 
 		int i=0; for(i=0; i < receiv_mess.len ;i++) {
@@ -337,26 +337,33 @@ int process_port_input() {
  		int if_type=(t.if_type_n)? t.if_type2:t.if_type1;
  		fprintf(stderr, "ver: 0x%02x, model: 0x%u, if_type: %u, release=%d\n", 
  			t.ver, t.model,if_type , t.release );
- 		devices[gp_cfg.last_dev].cid_revert = (if_type ==0)? 1:0;
+ 		devices[gp_cfg.last_dev].cid_revert = (if_type > 0)? 1:0;
  		
  	} else if ( receiv_mess.cmd_n == 0x0A ) {
  		gp_port_status_t t;
  		memcpy(&t,receiv_mess.cmd_buff,( (receiv_mess.len <= sizeof t )? receiv_mess.len : 4));
  	} else if ( receiv_mess.cmd_n == 0x06 ) {
  		gp_reg_cid_t* t=(gp_reg_cid_t*)receiv_mess.cmd_buff;
-		uint8_t cid[20];
- 		bin2hex(cid,t->cid,6,devices[gp_cfg.last_dev].cid_revert);
  		if( devices[gp_cfg.last_dev].new_cid_flag == 1 || devices[gp_cfg.last_dev].last_ev != t->ev ) {
-			fprintf(stderr, "cid: 0x%12s, addr: %d, ev: %02x, src: %d\n", cid,t->addr,t->ev, gp_cfg.last_dev);
-			fprintf(stderr,"cid: 0x%12s dev=%d, ev: %02x\n", devices[gp_cfg.last_dev].last_cid, gp_cfg.last_dev,t->ev);
-			syslog(LOG_ERR,"cid: 0x%12s dev=%d, ev: %02x",   devices[gp_cfg.last_dev].last_cid, gp_cfg.last_dev,t->ev);
+			uint8_t cid[20];
+// 			uint8_t t[20]= {'0','0','0','0'};
+// 			int l=bin2hex(&t,&receiv_mess.cmd_buff,( (receiv_mess.len <= 6)? receiv_mess.len : 6), devices[gp_cfg.last_dev].cid_revert);
+
+//	 		bin2hex(cid,t->cid,6,devices[gp_cfg.last_dev].cid_revert);
+//			fprintf(stderr, "cid: 0x%12s, addr: %d, ev: %02x, src: %d\n", cid,t->addr,t->ev, gp_cfg.last_dev);
+			long2hex(cid,devices[gp_cfg.last_dev].last_cid);
+			fprintf(stderr,"cid: 0x%016llX,  0x%12s dev=%d, ev: %02x\n", devices[gp_cfg.last_dev].last_cid,
+				cid, gp_cfg.last_dev, t->ev);
+//			syslog(LOG_ERR,"cid: 0x%12s dev=%d, ev: %02x", cid, gp_cfg.last_dev,t->ev);
 		
 			if( (t->ev & ~1 ) == 0x02 ) {
 				gp_token_rec_t t2;
-				memcpy(&t2,devices[gp_cfg.last_dev].last_cid_n,8);
+				memset(&t2,0,sizeof(gp_token_rec_t));
+				int2bin(t2.cid, devices[gp_cfg.last_dev].last_cid,6,devices[gp_cfg.last_dev].cid_revert);
+//				memcpy(&t2,(void*)devices[gp_cfg.last_dev].last_cid,6);
 				t2.attr=0; t2.time_zone_mask=0xFF;
 				ad_set_token(AD_Q_SECOND, gp_cfg.last_dev, devices[gp_cfg.last_dev].bound_tocken, &t2,1);
-				fprintf(stderr,"Writing  cid: 0x%12s dev=%d, .bound=0x%02X\n", 
+				fprintf(stderr,"Writing  cid: 0x%012X 12s dev=%d, .bound=0x%02X\n", 
 					devices[gp_cfg.last_dev].last_cid, gp_cfg.last_dev, devices[gp_cfg.last_dev].bound_tocken);
 				devices[gp_cfg.last_dev].bound_tocken+=8;
 				ad_set_token_bound(AD_Q_SECOND, gp_cfg.last_dev, devices[gp_cfg.last_dev].bound_tocken);
@@ -371,14 +378,10 @@ int process_port_input() {
  		memcpy(&cid,receiv_mess.cmd_buff,( (receiv_mess.len <= sizeof  cid)? receiv_mess.len : sizeof  cid));
   		fprintf(stderr, "cid: 0x%012llX\n",  htobe64(cid << 16));*/\
   		if( gp_cfg.last_target == AD_TARGET_GET_CID ){
-			uint8_t t[20]= {'0','0','0','0'};
-			int l=bin2hex(&t,&receiv_mess.cmd_buff,( (receiv_mess.len <= 6)? receiv_mess.len : 6), devices[gp_cfg.last_dev].cid_revert);
-			if( memcmp(devices[gp_cfg.last_dev].last_cid,t,l) != 0 ) {
-				memcpy(devices[gp_cfg.last_dev].last_cid,t,l);
-				memcpy(devices[gp_cfg.last_dev].last_cid_n,receiv_mess.cmd_buff,l);
-//				fprintf(stderr, "cid: [0x%12s] dev=%d\n", t, send_mess.dst);
+			uint64_t a=bin2int(receiv_mess.cmd_buff,receiv_mess.len,devices[gp_cfg.last_dev].cid_revert);
+			if( devices[gp_cfg.last_dev].last_cid != a ) {
+				devices[gp_cfg.last_dev].last_cid=a;
 				devices[gp_cfg.last_dev].new_cid_flag=1;
-//				syslog(LOG_ERR,"cid: 0x%12s dev=%d (%d)", t, send_mess.dst, l);
 			}
 			return ad_get_regs(AD_Q_SHORT, receiv_mess.src);
   		} else if ( gp_cfg.last_target == AD_TARGET_GET_TOKEN_BOUND) {
@@ -407,7 +410,7 @@ int process_port_input() {
 			memcpy(&t,&receiv_mess.cmd_buff,8);
 			fprintf(stderr, "ev: code=%x, addr=0x%04X, (%d) \n", t.ev_code, htobe16(t.bound), sizeof t);
 			syslog(LOG_ERR, "ev: code=%x, addr=0x%04X \n", t.ev_code, htobe16(t.bound));*/
-  			gp_event_t* t=&receiv_mess.cmd_buff;
+  			gp_event_t* t=(gp_event_t*)&receiv_mess.cmd_buff;
   			gp_event_t* bound=devices[gp_cfg.last_dev].bound_down;
 // 			memcpy(&t,&receiv_mess.cmd_buff,receiv_mess.len);
  			int n=receiv_mess.len/sizeof(gp_event_t);

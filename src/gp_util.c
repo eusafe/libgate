@@ -115,6 +115,53 @@ int bin2hex(uint8_t* d ,uint8_t* s, size_t len, int revert) {
 	return 2*c;
 }
 
+
+int long2hex(uint8_t* d, uint64_t a) {
+	int i; int c=0;
+	int l = sizeof(a);
+	uint8_t* s=(uint8_t*)&a+l-1;
+//		s +=len-1;
+	for(i=0;i<l;i++,s--) {
+		uint8_t h=*s >> 4;
+		uint8_t l=*s & 0x0f;
+//		printf("%x %x\n", h, l);
+		*(d++)=(h < 10 )? h + '0': h +'A'-10;
+		*(d++)=(l < 10 )? l + '0': l +'A'-10;
+		c+=2;
+	}
+/*	for(i=0;i<l;i++,s++) {
+		uint8_t h=*s >> 4;
+		uint8_t l=*s & 0x0f;
+		printf("%x %x\n", h, l);
+		*(d++)=(h < 10 )? h + '0': h +'A'-10;
+		*(d++)=(l < 10 )? l + '0': l +'A'-10;
+		c++;
+	}*/
+	*d='\0';
+	return c;
+}
+
+int hex2long() {
+}
+
+uint64_t bin2int (uint8_t* s, size_t len, int revert) {
+	uint64_t a=0;
+	int l=(len <= sizeof a)? len : sizeof  a;
+	memcpy((uint8_t*)&a,s, l);
+	if(revert == 1) 
+		a=be64toh(a) >> 8 * (8 - l);
+	
+	return a;
+}
+
+void  int2bin(uint8_t* d, uint64_t a, size_t len, int revert) {
+	if(revert == 1) 
+		a=be64toh(a) >> 8 * (8 - len);
+	
+	memcpy(d,(uint8_t*)&a, len);
+}
+
+
 static struct tm curtime;
 
 int set_rtc_date(int dev) {

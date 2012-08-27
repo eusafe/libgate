@@ -48,12 +48,19 @@ typedef struct cmd_send_t  {
 
 #include "gp_layer.h"
 #include "ad_target.h"
+#include "ad_cmd.h"
+#include "gp_processor.h"
 
 // Util
 uint8_t crc8_xor(uint8_t* p, int l);
 int memcpy_esc(uint8_t* d, uint8_t* s, int l);
 int memcpy_unesc(uint8_t* d, uint8_t* s, int l);
 int bin2hex(uint8_t* d ,uint8_t* s, size_t len, int revert);
+
+int long2hex(uint8_t* d, uint64_t a);
+uint64_t bin2int (uint8_t* s, size_t len, int revert);
+void int2bin(uint8_t* d, uint64_t a, size_t len, int revert);
+
 
 // int set_rtc_date(int dev);
 // struct tm* get_rtc_date(gp_date_rtc_t* d);
