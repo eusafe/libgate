@@ -3,6 +3,8 @@
 #ifndef _LIBGATE_H
 #define _LIBGATE_H 1
 
+#include <stdint.h>
+#include <stdlib.h>
 
 
 //#pragma PACK(1)

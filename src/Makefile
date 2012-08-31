@@ -37,3 +37,4 @@ gp_layer.o : gp_layer.c gp_layer.h  ad_target.h libgate.h
 
 clean :
 	-rm *.o  *~ libgate.a
+# DO NOT DELETE

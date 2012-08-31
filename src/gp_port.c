@@ -10,12 +10,62 @@
 
 #include <termios.h>
 #include <fcntl.h>
+#include <unistd.h>
+#include <errno.h>
 
 // #include <stdio.h>
 // #include <stdarg.h>
 // #include <stdint.h>
 // #include <stdlib.h>
- 
+
+#include <syslog.h>
+#include <time.h>
+#include <sys/time.h>
+
+#include "libgate.h"
+int open_port(char* path, int speed);
+
+void gp_close () {
+	if (gp_cfg.fd >= 0) {
+		syslog(LOG_ERR, "closing controller port %m");
+//		if ( event_del(gp_cfg.evport) < 0) syslog(LOG_ERR, "event_del (port): %m");
+		close(gp_cfg.fd);
+	}
+	gp_cfg.fd = -1;
+}
+
+// try to reconnect to switch socket and/or main controller port if closed
+int gp_reconnect (int ignore_timeout) {
+	time_t now = time((time_t*)NULL);
+	static time_t last_try=(time_t)0;
+	static int portIsOpen=1; /* '1' Need for first open_port() call problem */
+
+	if (ignore_timeout || (now - SOCKET_RETRY_TIMEOUT > last_try )) {
+		last_try = now;
+		if (gp_cfg.fd < 0) {
+//			dprint(DL5, "trying to [re]connect to controller\n");
+//	fprintf(stderr, "open_port: %s, %d \n",gp_cfg.port_path, gp_cfg.port_speed); 
+//			if ((gp_cfg.fd = open_port((char*)gp_cfg.port_path, gp_cfg.port_speed, 1)) < 0) {
+			if ((gp_cfg.fd = open_port((char*)gp_cfg.port_path, gp_cfg.port_speed)) < 0) {
+				syslog(LOG_CRIT, "open port (errcode %d): %m", errno);
+//				if (portIsOpen == 1) send_switch(GATEKEEPER_NUMERIC_ID | NAGIOS_NUMERIC_ID, ALERT_TTY_USB);
+				portIsOpen=0;
+			} else {
+//				fprintf(stderr, "use port %s (%d)\n", gp_cfg.port_path, gp_cfg.fd);
+//				if (adapter_init() < 0) syslog(LOG_CRIT, "cannot initialize adapter");
+//				event_set(&evport, gp_cfg.fd, EV_READ|EV_PERSIST, gp_receiv, (void*)&evport);
+//				event_set(&evport, gp_cfg.fd, EV_READ|EV_PERSIST|EV_TIMEOUT, gp_receiv, (void*)&evport);
+				event_set(gp_cfg.evport, gp_cfg.fd, EV_READ|EV_TIMEOUT, gp_receiv, (void*)gp_cfg.evport);
+				if ( event_add(gp_cfg.evport, &gp_cfg.timeout) < 0) syslog(LOG_ERR, "evport,event_add setup: %m");
+				portIsOpen=1;
+			}
+		}
+	}
+	if( gp_cfg.fd < 0 ) 
+		return 0;
+	else
+		return 1;
+}
 
 
 int open_port (char *path, int speed)
