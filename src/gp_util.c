@@ -4,7 +4,7 @@
  * 
  * Designed by Evgeny Byrganov <eu dot safeschool at gmail dot com> for safeschool.ru, 2012
  *  
- * $Id: gp_util.c 2692 2012-08-17 13:36:51Z eu $
+ * $Id: gp_util.c 2731 2012-09-14 14:55:56Z eu $
  *
  */
 
@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
+#include <string.h>
 
 #include "libgate.h"
 
@@ -142,6 +143,7 @@ int long2hex(uint8_t* d, uint64_t a) {
 }
 
 int hex2long() {
+	return 1;
 }
 
 uint64_t bin2int (uint8_t* s, size_t len, int revert) {

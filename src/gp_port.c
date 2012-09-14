@@ -4,7 +4,7 @@
  * 
  * Designed by Evgeny Byrganov <eu dot safeschool at gmail dot com> for safeschool.ru, 2012
  *  
- * $Id: gp_port.c 2691 2012-08-16 11:14:06Z eu $
+ * $Id: gp_port.c 2731 2012-09-14 14:55:56Z eu $
  *
  */
 
@@ -28,7 +28,7 @@ int open_port(char* path, int speed);
 void gp_close () {
 	if (gp_cfg.fd >= 0) {
 		syslog(LOG_ERR, "closing controller port %m");
-//		if ( event_del(gp_cfg.evport) < 0) syslog(LOG_ERR, "event_del (port): %m");
+		if ( event_del(&gp_cfg.evport) < 0) syslog(LOG_ERR, "event_del (port): %m");
 		close(gp_cfg.fd);
 	}
 	gp_cfg.fd = -1;
@@ -53,10 +53,9 @@ int gp_reconnect (int ignore_timeout) {
 			} else {
 //				fprintf(stderr, "use port %s (%d)\n", gp_cfg.port_path, gp_cfg.fd);
 //				if (adapter_init() < 0) syslog(LOG_CRIT, "cannot initialize adapter");
-//				event_set(&evport, gp_cfg.fd, EV_READ|EV_PERSIST, gp_receiv, (void*)&evport);
 //				event_set(&evport, gp_cfg.fd, EV_READ|EV_PERSIST|EV_TIMEOUT, gp_receiv, (void*)&evport);
-				event_set(gp_cfg.evport, gp_cfg.fd, EV_READ|EV_TIMEOUT, gp_receiv, (void*)gp_cfg.evport);
-				if ( event_add(gp_cfg.evport, &gp_cfg.timeout) < 0) syslog(LOG_ERR, "evport,event_add setup: %m");
+				event_set(&gp_cfg.evport, gp_cfg.fd, EV_READ|EV_TIMEOUT, gp_receiv, (void*)&gp_cfg.evport);
+				if ( event_add(&gp_cfg.evport, &gp_cfg.timeout) < 0) syslog(LOG_ERR, "evport,event_add setup: %m");
 				portIsOpen=1;
 			}
 		}

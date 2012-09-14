@@ -4,7 +4,7 @@
  * 
  * Designed by Evgeny Byrganov <eu dot safeschool at gmail dot com> for safeschool.ru, 2012
  *  
- * $Id$
+ * $Id: libgate.h 2731 2012-09-14 14:55:56Z eu $
  *
  */
 
@@ -17,6 +17,8 @@
 
 
 //#pragma PACK(1)
+
+#define GP_DELAY 150
 
 // Gate port
 #define GP_INIT 0xFA
@@ -32,6 +34,11 @@
 #define GP_REPLY_ACK 0x55
 #define GP_REPLY_NACK 0xAA
 
+#define PROC_REPLY_ACK		1
+#define PROC_REPLY_NACK		128
+#define PROC_REPLY_EEPROM_ERR	129
+
+
 //#define GP_CMD_ 1
 
 #define GP_PORT_SEND_BUF_LENGTH 130
@@ -42,10 +49,13 @@
 
 #define int2bcd(x)  ((((x)/10) << 4) + (x)%10)
 #define bcd2int(x)  ((((x) & 0xF0) >> 4)*10  +  ((x) & 0x0F))
+#define tv2ms(x) (x.tv_sec%100000)* 1000 + x.tv_usec/1000)
 
+typedef int (*ev_cbfunc)(int st);
 
 typedef struct cmd_send_t  {
 	uint8_t target_n;
+	ev_cbfunc ev_handler;
 	int bank;
 	int set_timeout; /* in mil sec */
 	int polling;
@@ -59,8 +69,8 @@ typedef struct cmd_send_t  {
 
 #include "gp_layer.h"
 #include "ad_target.h"
-#include "ad_cmd.h"
 #include "gp_processor.h"
+#include "ad_cmd.h"
 
 // Util
 uint8_t crc8_xor(uint8_t* p, int l);

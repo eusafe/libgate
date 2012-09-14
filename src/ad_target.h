@@ -42,12 +42,14 @@ int ad_hard_reset(int q, int gp_dst);
 int ad_turn_on(int q, int gp_dst, int subdev);
 int ad_turn_off(int q, int gp_dst);
 int ad_exchange(int q, int gp_dst, int new_dst);
-int ad_get_cid(int q, int gp_dst);
-int ad_get_buff_addr(int q, int gp_dst);
+int ad_get_cid(int q, int gp_dst, ev_cbfunc handler);
+
+int ad_get_buff_addr(int q, int gp_dst, ev_cbfunc handler);
 int ad_get_buff_data(int q, int gp_dst, uint16_t addr, size_t l);
 int ad_reset_buff(int q, int gp_dst);
+int ad_set_buff_addr_down(int q, int gp_dst, uint16_t addr);
 
-int ad_get_token_bound(int q, int gp_dst);
+int ad_get_token_bound(int q, int gp_dst, ev_cbfunc handler);
 int ad_set_token_bound(int q, int gp_dst, uint16_t addr);
 int ad_reset_token_bound(int q, int gp_dst);
 int ad_set_token(int q, int gp_dst, uint16_t addr, gp_token_rec_t* data, int n);

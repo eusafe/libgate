@@ -8,49 +8,23 @@
 #include <sys/param.h>
 #include <event.h>
 
-struct gp_cfg_def {
-	int fd;
-	int port_speed;
-	char port_path[MAXPATHLEN];
-	struct event* evport;
-//	struct event ev_timeout;
-	struct timeval timeout;
-	struct event ev_scan;
-	struct timeval scan_dev_interval;
-	int gp_timeout;  /* in mil sec */
-	uint32_t last_read;  /* last event in mil sec */
-	int last_dev;
-	int last_target;
-	int polling;
-	int max_dev_n;
-	int max_timeout_count;
-	int ev_block_size;
-};
-extern struct gp_cfg_def  gp_cfg;
 
-typedef struct gp_dev {
-	int activ;
-	int timeout_count;
-	int cid_revert;
-	uint16_t bound_up;
-	uint16_t bound_down;
-	uint16_t bound_tocken;
-	uint64_t last_cid;
-//	uint8_t last_cid[20];
-//	uint8_t last_cid_n[8];
-	int last_ev;
-	int new_cid_flag;
-} gp_dev;
-extern gp_dev devices[];
+//extern struct send_mess_def;
+//typedef int (*event_cb)(int st);
+//typedef void (*event_log_cb2)(int severity, const char *msg);
+
 
 #pragma pack(push,1)
 struct send_mess_def {
 	int len;
-	int activ;
-	uint32_t sent_time;  /* sent time in mil sec */
 	int dev;
-	int bank;
+//	uint8_t cmd_;
+	uint32_t sent_time;  /* sent time in mil sec */
+	int target;
+	int activ;
 	int polling;
+	int bank;
+	ev_cbfunc ev_handler;
 	union {
 		uint8_t buf[GP_PORT_SEND_BUF_LENGTH];
 		struct {
@@ -68,6 +42,8 @@ extern struct send_mess_def send_mess;
 
 struct receiv_mess_def {
 	int len;
+	int dev;
+	uint32_t last_read;  /* last event in mil sec */
 	union {
 		uint8_t buf[GP_PORT_READ_BUF_LENGTH];
 		struct {
@@ -223,13 +199,6 @@ typedef struct gp_info_t {
 	uint8_t release;
 } gp_info_t;
 
-typedef struct gp_times_t {
-	uint8_t open_door;
-	uint8_t ctrl_close;
-	uint8_t ctrl_open;
-	uint8_t timeout_confirm;
-} gp_times_t;
-
 typedef struct gp_event_t {
 	uint8_t ev_code;
 	uint16_t addr;
@@ -241,6 +210,13 @@ typedef struct gp_event_t {
 		uint8_t sec;
 	} ;
 } gp_event_t;
+
+typedef struct gp_times_t {
+	uint8_t open_door;
+	uint8_t ctrl_close;
+	uint8_t ctrl_open;
+	uint8_t timeout_confirm;
+} gp_times_t;
 
 typedef struct gp_date_rtc_t {
 	uint8_t sec:7;
@@ -264,6 +240,48 @@ typedef struct gp_time_zone_t {
 	uint8_t stub[3];
 } gp_time_zone_t;
 #pragma pack(pop)
+
+
+struct gp_cfg_def {
+	int fd;
+	int port_speed;
+	char port_path[MAXPATHLEN];
+	struct event evport;
+	struct event ev_scan_dev;
+	struct event ev_scan_log;
+//	struct event ev_timeout;
+	struct timeval timeout;
+	struct timeval scan_dev_interval;
+	struct timeval scan_log_interval;
+	int gp_timeout;  /* in mil sec */
+//	uint32_t last_read;  /* last event in mil sec */
+//	int last_dev;
+//	int last_target;
+	int polling;
+	int max_dev_n;
+	int max_timeout_count;
+	int ev_block_size;
+};
+extern struct gp_cfg_def  gp_cfg;
+
+typedef struct gp_dev {
+	int activ;
+	int timeout_count;
+	int cid_revert;
+	uint16_t bound_up;
+	uint16_t bound_down;
+	uint16_t bound_token;
+	uint64_t last_cid;
+	uint32_t last_read;  /* last event in mil sec */
+	uint32_t last_sent;  /* last event in mil sec */
+//	uint8_t last_cid[20];
+//	uint8_t last_cid_n[8];
+	int last_ev;
+	int new_cid_flag;
+	gp_event_t last_ev_rec;
+} gp_dev;
+extern gp_dev devices[];
+
 
 void gp_receiv(int fd, short event, void *arg);
 
