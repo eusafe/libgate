@@ -4,7 +4,7 @@
  * 
  * Designed by Evgeny Byrganov <eu dot safeschool at gmail dot com> for safeschool.ru, 2012
  *  
- * $Id: gp_util.c 2731 2012-09-14 14:55:56Z eu $
+ * $Id: gp_util.c 2735 2012-09-21 14:31:21Z eu $
  *
  */
 
@@ -162,6 +162,38 @@ void  int2bin(uint8_t* d, uint64_t a, size_t len, int revert) {
 	
 	memcpy(d,(uint8_t*)&a, len);
 }
+
+uint64_t gp_dev_bvector() {
+	uint64_t v = (uint64_t)0;
+	uint64_t b = 1;
+	int i;
+	
+	for(i=1;i<=gp_cfg.max_dev_n;i++) {
+		if( devices[i].activ == 1 ) v |= b;
+		b <<= 1;
+//		fprintf(stderr, "vervtor: v:%x, b:%x\n",v,b);
+//		devices[i].timeout_count=0;
+	}
+	return v;
+}
+
+char* gp_dev_vector() {
+	static char v[256*2];
+	int i=0, gp_dst;
+	for(gp_dst=1;gp_dst<=gp_cfg.max_dev_n;i++,gp_dst++) {
+		if( devices[gp_dst].activ == 1 ) 
+			v[i] = '0' + gp_dst % 10;
+		else
+			v[i] = '.';
+		if( gp_dst % 4 == 0 ) {
+			i++;
+			v[i] = ' ';
+		}
+	}
+	v[i]='\0';
+	return v;
+}
+
 
 
 static struct tm curtime;

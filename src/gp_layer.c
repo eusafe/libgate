@@ -4,7 +4,7 @@
  * 
  * Designed by Evgeny Byrganov <eu dot safeschool at gmail dot com> for safeschool.ru, 2012
  *  
- * $Id: gp_layer.c 2731 2012-09-14 14:55:56Z eu $
+ * $Id: gp_layer.c 2735 2012-09-21 14:31:21Z eu $
  *
  */
 
@@ -43,11 +43,13 @@ struct gp_cfg_def  gp_cfg = {
 	.scan_dev_interval = { 40, 0 },
 	.scan_log_interval = { 5, 0 },
 	.gp_timeout = GP_DELAY,
+	.times = { 150, 200, 0, 0 },
 //	.last_read = 0,
 //	.last_dev = 0,
 //	.polling = 0,
 	.max_dev_n = 7,
 	.max_timeout_count = 4,
+	.max_bound_token = GP_SPART_TICKET_BOUND,
 	.ev_block_size = 8
 };
 
@@ -76,7 +78,7 @@ int gp_resend () {
 
  	if(gp_cfg.fd < 3) exit (100+gp_cfg.fd);
 	
-	if( debug >= 5 || (debug >= 4 && gp_cfg.polling == 0)  ) {
+	if( debug >= 9 || (debug >= 8 && gp_cfg.polling == 0)  ) {
 		print_buff("port  sending: ", send_mess.buf, send_mess.len);
 /*		fprintf(stderr, "port  sending: "); 
 		for(i=0;i<send_mess.len;i++) {
@@ -122,7 +124,7 @@ int gp_send(cmd_send_t* cmd) {
 	gp_cfg.polling = cmd->polling;
 //	gp_cfg.last_target = cmd->target_n;
 	
-	send_mess.activ=1;
+	send_mess.is_expected=1;
 	send_mess.bank = cmd->bank;
 	send_mess.target = cmd->target_n;
 	
@@ -149,7 +151,7 @@ int gp_send(cmd_send_t* cmd) {
  	gettimeofday(&tv,NULL);
 // 	devices[send_mess.dev].last_sent=send_mess.sent_time=(tv.tv_sec%100000)* 1000 + tv.tv_usec/1000;
  	devices[send_mess.dev].last_sent=send_mess.sent_time=tv2ms(tv);
-	
+
 	return gp_resend();
 }
 
@@ -159,17 +161,22 @@ int gp_send_idle() {
 	
 	do {
 		gp_dst++;
-		if( gp_dst > gp_cfg.max_dev_n ) { gp_dst=0; return 0; }
+		if( gp_dst > gp_cfg.max_dev_n ) { gp_dst=3; return 0; }
 //	fprintf(stderr, "Check gp_send_idle for %d (%d)\n",gp_dst,devices[gp_dst].timeout_count );
 		if(devices[gp_dst].timeout_count > gp_cfg.max_timeout_count) {
-//			if( devices[gp_dst].activ > 0)
-			if ( gp_dst == 5  ) fprintf(stderr, "Disabled dev %d (%d)\n", gp_dst, devices[gp_dst].timeout_count);
+			if( devices[gp_dst].activ > 0)
+//			if ( gp_dst == 5  ) 
+				{
+				fprintf(stderr, "Disabled dev %d (%d)\n", gp_dst, devices[gp_dst].timeout_count);
+				syslog(LOG_ERR, "Disabled dev %d (%d)\n", gp_dst, devices[gp_dst].timeout_count);
+				}
 			devices[gp_dst].activ=activ=0;
 			continue;
 		}
 		activ=1;
 	} while( activ == 0 );
-	if ( gp_dst == 5  ) fprintf(stderr, "Run gp_send_idle for %d (%d)\n",gp_dst,devices[gp_dst].timeout_count );
+//	if ( gp_dst == 5  ) 
+//	fprintf(stderr, "Run gp_send_idle for %d (%d)\n",gp_dst,devices[gp_dst].timeout_count );
 	
 /*	cmd_send_t z = {
 		.cmd_n = 0x06,
@@ -196,38 +203,6 @@ int gp_send_idle() {
 }
 
 
-uint64_t gp_dev_bvector() {
-	uint64_t v = (uint64_t)0;
-	uint64_t b = 1;
-	int i;
-	
-	for(i=1;i<=gp_cfg.max_dev_n;i++) {
-		if( devices[i].activ == 1 ) v |= b;
-		b <<= 1;
-//		fprintf(stderr, "vervtor: v:%x, b:%x\n",v,b);
-//		devices[i].timeout_count=0;
-	}
-	return v;
-}
-
-char* gp_dev_vector() {
-	static char v[256*2];
-	int i=0, gp_dst;
-	for(gp_dst=1;gp_dst<=gp_cfg.max_dev_n;i++,gp_dst++) {
-		if( devices[gp_dst].activ == 1 ) 
-			v[i] = '0' + gp_dst % 10;
-		else
-			v[i] = '.';
-		if( gp_dst % 4 == 0 ) {
-			i++;
-			v[i] = ' ';
-		}
-	}
-	v[i]='\0';
-	return v;
-}
-
-
 #pragma pack(push,1)
 #pragma pack(pop)
 
@@ -241,20 +216,20 @@ void gp_receiv(int fd, short event, void *arg) {
 	struct timeval tv;
  	
  	gettimeofday(&tv,NULL);
-// 	uint32_t current_time=(tv.tv_sec%100000)* 1000 + tv.tv_usec/1000;
-// 	uint32_t expect_time=(gp_cfg.timeout.tv_sec%100000)*1000 + gp_cfg.timeout.tv_usec/1000;
  	uint32_t current_time=tv2ms(tv);
  	uint32_t expect_time=tv2ms(gp_cfg.timeout);
-	if (send_mess.dev == 5 ) 
-	fprintf(stderr, "Got  event (%d): 0x%X, %u.%06u (%u ms), sent time %u ms, current timeout: %u ms, delta: %u ms\n",
+ 	uint32_t delta = current_time -  send_mess.sent_time;
+ 	uint32_t delta2 = current_time -  receiv_mess.last_read;
+/*	if (send_mess.dev == 5 ) 
+	fprintf(stderr, "Got  event (%d): 0x%X, %u.%06u (%u ms), sent time %u ms, current timeout: %u ms, delta: %u ms (%u ms)\n",
 		send_mess.dev,
 		event,
 		tv.tv_sec,tv.tv_usec,
 		current_time,
 		send_mess.sent_time,
 		expect_time,
-		current_time -  send_mess.sent_time
-		);
+		delta, delta2
+		);*/
 //	char buf[PORT_READ_BUF_LENGTH];
 	
 //	gp_reconnect(1);
@@ -277,26 +252,30 @@ void gp_receiv(int fd, short event, void *arg) {
 // HACK - we check real timeout, not timer
 //		if( current_time >= expect_time ) {	 	
 //				} else if(gp_cfg.timeout.tv_sec > 0) {
-	 	uint32_t delta = current_time -  send_mess.sent_time;
-		if ( send_mess.dev == 5 ) fprintf(stderr, "inc %d dev=%d, delta=%d\n", devices[send_mess.dev].timeout_count, send_mess.dev,delta );
+/*		if ( send_mess.dev == 5 ) 
+		fprintf(stderr, "dev=%d,  delta by sent = %d, delta by read = %d, count = %d\n",
+			send_mess.dev,delta, delta2, devices[send_mess.dev].timeout_count );*/
 	 	if( delta >=  gp_cfg.gp_timeout) {
-			if( send_mess.activ > 0 ) {
-				send_mess.activ=0;
+			if( send_mess.is_expected > 0 ) {
+				send_mess.is_expected=0;
 				devices[send_mess.dev].timeout_count++;
 //				if ( send_mess.dev == 1 ) fprintf(stderr, "inc %d dev=%d\n", devices[send_mess.dev].timeout_count, send_mess.dev);
 				if( gp_cfg.polling == 0 ) {
 //				if( send_mess.dev == 5 ) {
-					send_mess.target=0;
+//					send_mess.target=0;
+					uint32_t delta3=current_time - devices[send_mess.dev].last_read;
 					fprintf(stderr, "Timeout (%d) for read for %d (cmd=%d, delta=%u)\n", devices[send_mess.dev].timeout_count,
-						send_mess.dev, send_mess.target, current_time - devices[send_mess.dev].last_read);
+						send_mess.dev, send_mess.target, delta3);
 					syslog(LOG_ERR, "Timeout (%d) for read for %d (cmd=%d, delta=%u)",   devices[send_mess.dev].timeout_count,
-						send_mess.dev, send_mess.target, current_time - devices[send_mess.dev].last_read);
+						send_mess.dev, send_mess.target, delta3);
 				}
 			}
 		}	 	
 //		if( current_time >= expect_time + gp_cfg.gp_timeout) {
-	 	if( current_time - receiv_mess.last_read >  gp_cfg.gp_timeout*2) {
-//	 		fprintf(stderr, "Runed gp_put_cmd!\n");
+//	 	if( current_time - receiv_mess.last_read >  gp_cfg.gp_timeout) {
+	 	if( delta >=  gp_cfg.gp_timeout) {
+// /*	 		if ( send_mess.dev == 5 ) 
+// 				fprintf(stderr, "Runed gp_put_cmd!\n");*/
 			if( gp_put_cmd() > 0 ||  gp_send_idle() > 0) return;
 	 	}
 		evutil_timerclear(&gp_cfg.timeout);
@@ -313,12 +292,16 @@ void gp_receiv(int fd, short event, void *arg) {
 // 	fprintf(stderr, "Set last read %lu \n",current_time);
 	devices[send_mess.dev].last_read=receiv_mess.last_read=current_time;
 //	gp_cfg.last_dev=send_mess.dev;
-	send_mess.activ=0;
+	send_mess.is_expected=0;
+// TODO after check crc
 	if( gp_cfg.polling == 1 && devices[send_mess.dev].activ==0) {
 		syslog(LOG_ERR,"Found dev: '%d'\n",send_mess.dev);
 	}
 	devices[send_mess.dev].activ=1; 
 	devices[send_mess.dev].timeout_count=0;
+	if (devices[send_mess.dev].is_inited == 0) {
+		gp_dev_init(send_mess.dev);
+	}
 // HACK	
 //	mydev=send_mess.dst;
 // First chunk of data. 
@@ -330,7 +313,7 @@ void gp_receiv(int fd, short event, void *arg) {
 	
 	
 //	if( debug >= 5 || (debug >= 4 && gp_cfg.polling == 0) ||  receiv_mess.src != 7) {
-	if( debug >= 5 || (debug >= 4 && gp_cfg.polling == 0) ) {
+	if( debug >= 9 || (debug >= 8 && gp_cfg.polling == 0) ) {
 		print_buff("port received: ", receiv_buf_p, nread);
 	}
 // 	dprint(DL5, "read %d bytes, ev=%x\n", nread, event);
@@ -368,7 +351,7 @@ void gp_receiv(int fd, short event, void *arg) {
 				int crc=crc8_xor(&receiv_mess.id_ctrl,l-1);
 				fprintf(stderr, "crc8 error for %d (cmd=%d, crc=x0%02x) \n", send_mess.dev, send_mess.target, crc);
 				syslog(LOG_ERR, "crc8 error for %d (cmd=%d, crc=x0%02x) \n", send_mess.dev, send_mess.target, crc);
-				if( debug < 5 ) 
+				if( debug < 9 ) 
 					print_buff("port received (crc error): ", receiv_mess.buf, nread+receiv_mess.len);
 				exit(222);
 				return;
@@ -376,7 +359,7 @@ void gp_receiv(int fd, short event, void *arg) {
 // Check error!!!
 			if( send_mess.dev !=  receiv_mess.src ) {
 				fprintf(stderr, "device error: got %d, expect %d\n", receiv_mess.src, send_mess.dev);
-				exit(222);				
+//				exit(222);				
 				return;
 			} else {
 				receiv_mess.dev=receiv_mess.src;
@@ -443,6 +426,7 @@ void gp_get_dev_logs(int fd, short event, void *arg) {
 
 void gp_all_dev_enable(int fd, short event, void *arg) {
 	gp_reconnect(0);
+	db_sync();
 	
 	evutil_timerclear(&gp_cfg.scan_dev_interval);
 	gp_cfg.scan_dev_interval.tv_sec=20;
@@ -460,7 +444,18 @@ void gp_all_dev_ev(int fd, short event, void *arg) {
  	gp_all_dev_enable();
  	
 }*/
-
+int gp_dev_init(int dev) {
+//	gp_times_t times = { 150, 200, 0, 0 };
+	set_rtc_date(dev);
+	ad_set_times(AD_Q_SECOND, dev, &gp_cfg.times);
+	ad_set_token_bound(AD_Q_SECOND, dev, gp_cfg.max_bound_token);
+	
+	ad_get_token_bound(AD_Q_SECOND, dev, 0);
+	ad_get_info(AD_Q_SECOND, dev);
+	ad_get_date(AD_Q_SECOND, dev);
+	devices[dev].is_inited=1;		
+	return 1;
+}
 
 int gp_init () {
 	int i;
@@ -472,6 +467,7 @@ int gp_init () {
  	gp_all_dev_enable(0,0,0);
   	event_set(&gp_cfg.ev_scan_log, -1 , EV_TIMEOUT|EV_PERSIST, gp_get_dev_logs, (void*)&gp_cfg.ev_scan_log);
 	gp_get_dev_logs(0,0,0);
+	gp_cfg.max_bound_token=db_get_max_addr() + sizeof(gp_token_rec_t);
 	// connect to controller port and switch socket immediately
 	gp_reconnect(1);
 	return 1;

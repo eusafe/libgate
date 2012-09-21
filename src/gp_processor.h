@@ -9,7 +9,7 @@
 typedef struct {
 	int dev;
 	int subdev;
-	uint64_t cid;
+	db_token_rec_t  token;
 	int ev;
 } proc_add_cid_t;
 

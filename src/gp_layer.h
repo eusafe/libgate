@@ -2,16 +2,19 @@
 #define _GP_LAYER_H 1
 
 
-#define GP_SPART_TICKET_BOUND 0x00C0
-#define GP_SPART_TICKET_SIZE 8
 
 #include <sys/param.h>
 #include <event.h>
 
-
 //extern struct send_mess_def;
 //typedef int (*event_cb)(int st);
 //typedef void (*event_log_cb2)(int severity, const char *msg);
+
+#define GP_SPART_TICKET_BOUND 0x00C0
+#define GP_SPART_TICKET_SIZE 8
+#define GP_MAX_LOG_BOUND 0x8000
+
+#define GP_DELAY 110
 
 
 #pragma pack(push,1)
@@ -21,7 +24,7 @@ struct send_mess_def {
 //	uint8_t cmd_;
 	uint32_t sent_time;  /* sent time in mil sec */
 	int target;
-	int activ;
+	int is_expected;
 	int polling;
 	int bank;
 	ev_cbfunc ev_handler;
@@ -260,13 +263,16 @@ struct gp_cfg_def {
 	int polling;
 	int max_dev_n;
 	int max_timeout_count;
+	uint16_t max_bound_token;
 	int ev_block_size;
+	gp_times_t times;
 };
 extern struct gp_cfg_def  gp_cfg;
 
 typedef struct gp_dev {
 	int activ;
 	int timeout_count;
+	int is_inited;
 	int cid_revert;
 	uint16_t bound_up;
 	uint16_t bound_down;
@@ -277,6 +283,7 @@ typedef struct gp_dev {
 //	uint8_t last_cid[20];
 //	uint8_t last_cid_n[8];
 	int last_ev;
+	time_t last_ev_time;
 	int new_cid_flag;
 	gp_event_t last_ev_rec;
 } gp_dev;

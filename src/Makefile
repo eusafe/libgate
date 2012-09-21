@@ -1,5 +1,5 @@
 #
-# $Id: Makefile 2731 2012-09-14 14:55:56Z eu $
+# $Id: Makefile 2735 2012-09-21 14:31:21Z eu $
 #
 
 CFLAGS=-Wall 
@@ -14,31 +14,24 @@ else
  LIBS=-levent
 endif
 
-
-#gp_port.c 
-SRC=gp_layer.c gp_queue.c ad_target.c gp_util.c gp_port.c ad_cmd.c gp_processor.c
+SRC=gp_layer.c gp_queue.c ad_target.c gp_util.c gp_port.c ad_cmd.c gp_processor.c db_layer.c
 OBJ=$(addsuffix .o,$(basename $(SRC)))
-SRC_H=$(wildcast *.h)
+SRC_H=$(wildcard *.h)
 
 all : libgate.a
 
 test:
+	@echo $(SRC_H)
 	@echo $(OBJ)
 	
 libgate.a : $(OBJ)
 	ar r $@ $(OBJ)
-#	gcc -o adapter  $(OBJ) $(LIBS)
 
-libgate.h: $(SRC_H)
-	echo $(SRC_H)
+#libgate.h: $(SRC_H)
 
-#adapter.o : adapter.c  libgate.h
 
-%.o : %.c libgate.h
-	gcc $(CFLAGS) -c $<
-
-gp_layer.o : gp_layer.c gp_layer.h  ad_target.h libgate.h
-	gcc $(CFLAGS) -c  $<
+%.o : %.c $(SRC_H)
+	gcc -c -o $@ $(CFLAGS)  $<
 
 
 clean :

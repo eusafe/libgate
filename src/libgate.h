@@ -4,7 +4,7 @@
  * 
  * Designed by Evgeny Byrganov <eu dot safeschool at gmail dot com> for safeschool.ru, 2012
  *  
- * $Id: libgate.h 2731 2012-09-14 14:55:56Z eu $
+ * $Id: libgate.h 2735 2012-09-21 14:31:21Z eu $
  *
  */
 
@@ -17,8 +17,6 @@
 
 
 //#pragma PACK(1)
-
-#define GP_DELAY 150
 
 // Gate port
 #define GP_INIT 0xFA
@@ -49,7 +47,7 @@
 
 #define int2bcd(x)  ((((x)/10) << 4) + (x)%10)
 #define bcd2int(x)  ((((x) & 0xF0) >> 4)*10  +  ((x) & 0x0F))
-#define tv2ms(x) (x.tv_sec%100000)* 1000 + x.tv_usec/1000)
+#define tv2ms(x) ((x.tv_sec%100000)* 1000 + x.tv_usec/1000)
 
 typedef int (*ev_cbfunc)(int st);
 
@@ -69,6 +67,7 @@ typedef struct cmd_send_t  {
 
 #include "gp_layer.h"
 #include "ad_target.h"
+#include "db_layer.h"
 #include "gp_processor.h"
 #include "ad_cmd.h"
 
@@ -82,6 +81,9 @@ int long2hex(uint8_t* d, uint64_t a);
 uint64_t bin2int (uint8_t* s, size_t len, int revert);
 void int2bin(uint8_t* d, uint64_t a, size_t len, int revert);
 
+uint64_t gp_dev_bvector();
+char* gp_dev_vector();
+
 
 // int set_rtc_date(int dev);
 // struct tm* get_rtc_date(gp_date_rtc_t* d);
@@ -94,8 +96,6 @@ void int2bin(uint8_t* d, uint64_t a, size_t len, int revert);
 // gp_layer.c
 int gp_send(cmd_send_t* cmd);
 int gp_init ();
-uint64_t gp_dev_bvector();
-char* gp_dev_vector();
 
 // gp_queue.c
 struct gp_queue;
@@ -106,6 +106,7 @@ int qdump();
 int gp_queue_init();
 
 extern int debug;
+extern void zprintf(int, const char *, ...);
 
 #endif /*_LIBGATE_H  */
 
