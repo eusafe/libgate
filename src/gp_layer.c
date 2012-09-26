@@ -4,7 +4,7 @@
  * 
  * Designed by Evgeny Byrganov <eu dot safeschool at gmail dot com> for safeschool.ru, 2012
  *  
- * $Id: gp_layer.c 2735 2012-09-21 14:31:21Z eu $
+ * $Id: gp_layer.c 2737 2012-09-26 08:34:54Z eu $
  *
  */
 
@@ -161,7 +161,7 @@ int gp_send_idle() {
 	
 	do {
 		gp_dst++;
-		if( gp_dst > gp_cfg.max_dev_n ) { gp_dst=3; return 0; }
+		if( gp_dst > gp_cfg.max_dev_n ) { gp_dst=0; return 0; }
 //	fprintf(stderr, "Check gp_send_idle for %d (%d)\n",gp_dst,devices[gp_dst].timeout_count );
 		if(devices[gp_dst].timeout_count > gp_cfg.max_timeout_count) {
 			if( devices[gp_dst].activ > 0)
@@ -432,7 +432,7 @@ void gp_all_dev_enable(int fd, short event, void *arg) {
 	gp_cfg.scan_dev_interval.tv_sec=20;
 	if ( evtimer_add(&gp_cfg.ev_scan_dev, &gp_cfg.scan_dev_interval) < 0) syslog(LOG_ERR, "event_add.evkeep setup: %m");
 	fprintf(stderr, "Reseting activ for all devs. ");
-	fprintf(stderr, "Was mask: 0x%08llX, [%s]\n",  gp_dev_bvector(), gp_dev_vector());
+	fprintf(stderr, "Was mask: 0x%016llX, [%s]\n",  cmd_get_dev_bvector(), cmd_get_dev_vector());
 	int i;
 	for(i=1;i<=255;i++) {
 		devices[i].timeout_count=0;
@@ -450,8 +450,8 @@ int gp_dev_init(int dev) {
 	ad_set_times(AD_Q_SECOND, dev, &gp_cfg.times);
 	ad_set_token_bound(AD_Q_SECOND, dev, gp_cfg.max_bound_token);
 	
+	ad_get_info(AD_Q_SECOND, dev); // we got the byte order for cid
 	ad_get_token_bound(AD_Q_SECOND, dev, 0);
-	ad_get_info(AD_Q_SECOND, dev);
 	ad_get_date(AD_Q_SECOND, dev);
 	devices[dev].is_inited=1;		
 	return 1;
@@ -462,6 +462,7 @@ int gp_init () {
 	for(i=1;i<=255;i++) {
 //		devices[i].bound_token=0x2000;
 		devices[i].bound_token=GP_SPART_TICKET_BOUND;
+		devices[i].zone_id = 1;
 	}
  	event_set(&gp_cfg.ev_scan_dev, -1 , EV_TIMEOUT|EV_PERSIST, gp_all_dev_enable, (void*)&gp_cfg.ev_scan_dev);
  	gp_all_dev_enable(0,0,0);

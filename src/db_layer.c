@@ -92,6 +92,7 @@ int db_add_token(db_token_rec_t* rec) {
   	return 0;
   }
 
+  rec->zone_mask=1;
   memset(&k, 0, sizeof(DBT));
   memset(&d, 0, sizeof(DBT));
   k.data=&rec->cid;
@@ -105,10 +106,15 @@ int db_add_token(db_token_rec_t* rec) {
   	return 0;
   }
   
+  db_token_addr_t zaddr = {
+  	.addr = rec->addr,
+  	.zone_id = 1
+  };
+  
   memset(&k, 0, sizeof(DBT));
   memset(&d, 0, sizeof(DBT));
-  k.data=&rec->addr;
-  k.size=sizeof(uint16_t);
+  k.data=&zaddr;
+  k.size=sizeof(db_token_addr_t);
   d.data=&rec->cid;
   d.size=sizeof(uint64_t);
   
@@ -155,10 +161,15 @@ uint64_t db_get_cid_by_a(uint16_t addr) {
   int ret;
   uint64_t cid;
   
+  db_token_addr_t zaddr = {
+  	.addr = addr,
+  	.zone_id = 1
+  };
+  
   memset(&k, 0, sizeof(DBT));
   memset(&d, 0, sizeof(DBT));
-  k.data=&addr;
-  k.size=sizeof(uint16_t);
+  k.data=&zaddr;
+  k.size=sizeof(db_token_addr_t);
   d.data=&cid;
   d.ulen=sizeof(uint64_t);
   d.flags = DB_DBT_USERMEM;

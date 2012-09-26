@@ -180,7 +180,7 @@ typedef struct gp_token_rec_t {
 			uint8_t anti:1;
 		};
 	};
-	uint8_t time_zone_mask;
+	uint8_t schedule_mask;
 } gp_token_rec_t;
 
 typedef struct gp_port_cmd4_t {
@@ -270,6 +270,7 @@ struct gp_cfg_def {
 extern struct gp_cfg_def  gp_cfg;
 
 typedef struct gp_dev {
+	int zone_id;
 	int activ;
 	int timeout_count;
 	int is_inited;

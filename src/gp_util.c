@@ -4,7 +4,7 @@
  * 
  * Designed by Evgeny Byrganov <eu dot safeschool at gmail dot com> for safeschool.ru, 2012
  *  
- * $Id: gp_util.c 2735 2012-09-21 14:31:21Z eu $
+ * $Id: gp_util.c 2737 2012-09-26 08:34:54Z eu $
  *
  */
 
@@ -61,6 +61,7 @@ int memcpy_esc(uint8_t* d, uint8_t* s, int l) {
 	return c;
 }
 
+// can  d = s
 int memcpy_unesc(uint8_t* d, uint8_t* s, int len) {
 	int i;
 	int l=len;
@@ -163,6 +164,7 @@ void  int2bin(uint8_t* d, uint64_t a, size_t len, int revert) {
 	memcpy(d,(uint8_t*)&a, len);
 }
 
+/*
 uint64_t gp_dev_bvector() {
 	uint64_t v = (uint64_t)0;
 	uint64_t b = 1;
@@ -194,7 +196,7 @@ char* gp_dev_vector() {
 	return v;
 }
 
-
+*/
 
 static struct tm curtime;
 
