@@ -4,7 +4,7 @@
  * 
  * Designed by Evgeny Byrganov <eu dot safeschool at gmail dot com> for safeschool.ru, 2012
  *  
- * $Id: ad_target.c 2737 2012-09-26 08:34:54Z eu $
+ * $Id: ad_target.c 2772 2012-11-01 11:46:08Z eu $
  *
  */
 
@@ -47,7 +47,11 @@ int ad_soft_reset(int q, int gp_dst) {
 		.polling = 0,
 		.data_len = 0,
 	};
-	return gp_in_cmd(&z);
+	if( q == AD_Q_SHORT ) 
+		return gp_send(&z);
+	else
+		return gp_in_cmd(&z);
+//	return gp_in_cmd(&z);
 }
 
 int ad_hard_reset(int q, int gp_dst) {
@@ -241,8 +245,8 @@ int ad_reset_buff(int q, int gp_dst) {
 		.set_timeout = 100,
 		.polling = 0,
 		.data_len = 9,
-//		.cmd_buff = { 0x00, 0xD0, 4, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00}
-		.cmd_buff = { 0x00, 0xD0, 4, 0x00, 0x08, 0x7F, 0x90, 0x7F, 0x90}
+		.cmd_buff = { 0x00, 0xD0, 4, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00}
+//		.cmd_buff = { 0x00, 0xD0, 4, 0x00, 0x08, 0x7F, 0x90, 0x7F, 0x90}
 	};
 //	int i;
 //	for(i=5;i<z.data_len;i++) z.cmd_buff[i]=0;
@@ -252,12 +256,42 @@ int ad_reset_buff(int q, int gp_dst) {
 		return gp_in_cmd(&z);
 }
 
+int ad_get_token_bound(int q, int gp_dst, ev_cbfunc handler) {
+	cmd_send_t z = {
+		.queue = q,
+		.dst = gp_dst,
+		.ev_handler = handler,
+		.target_n = AD_TARGET_GET_TOKEN_BOUND,
+		.cmd_n = 0x04,
+		.bank = 0,
+		.set_timeout = 100,
+		.polling = 0,
+		.data_len = 5,
+		.cmd_buff = { 0x00, 0xA0, 2, 0x00, 0xBE}
+	};
+	
+	int r;
+	if( q == AD_Q_SHORT ) {
+		r=gp_send(&z);
+		z.bank=1;
+		z.cmd_buff[0]=0x01;
+		r|=gp_send(&z);
+	} else {
+		r=gp_in_cmd(&z);
+		z.bank=1;
+		z.cmd_buff[0]=0x01;
+		r|=gp_in_cmd(&z);
+	}
+	return r;
+}
+
+
 int ad_set_token_bound(int q, int gp_dst, uint16_t addr) {
 	cmd_send_t z = {
 		.queue = q,
 		.dst = gp_dst,
 		.ev_handler = 0,
-		.target_n = AD_TARGET_GET_TOKEN_BOUND,
+		.target_n = AD_TARGET_SET_TOKEN_BOUND,
 		.cmd_n = 0x05,
 		.bank = 0,
 		.set_timeout = 100,
@@ -314,35 +348,6 @@ int ad_reset_token_bound(int q, int gp_dst) {
 // 	return r;
 }
 
-int ad_get_token_bound(int q, int gp_dst, ev_cbfunc handler) {
-	cmd_send_t z = {
-		.queue = q,
-		.dst = gp_dst,
-		.ev_handler = handler,
-		.target_n = AD_TARGET_GET_TOKEN_BOUND,
-		.cmd_n = 0x04,
-		.bank = 0,
-		.set_timeout = 100,
-		.polling = 0,
-		.data_len = 5,
-		.cmd_buff = { 0x00, 0xA0, 2, 0x00, 0xBE}
-	};
-	
-	int r;
-	if( q == AD_Q_SHORT ) {
-		r=gp_send(&z);
-		z.bank=1;
-		z.cmd_buff[0]=0x01;
-		r|=gp_send(&z);
-	} else {
-		r=gp_in_cmd(&z);
-		z.bank=1;
-		z.cmd_buff[0]=0x01;
-		r|=gp_in_cmd(&z);
-	}
-	return r;
-}
-
 
 int ad_get_regs(int q, int gp_dst) {
 	cmd_send_t z = {
@@ -362,18 +367,50 @@ int ad_get_regs(int q, int gp_dst) {
 		return gp_in_cmd(&z);
 }
 
+int ad_get_token(int q, int gp_dst, uint16_t addr, int n) {
+	cmd_send_t z = {
+		.queue = q,
+		.dst = gp_dst,
+		.ev_handler = 0,
+		.target_n = AD_TARGET_GET_TOKEN,
+		.cmd_n = 0x04,
+		.bank = 0,
+		.set_timeout = 100,
+		.polling = 0,
+		.data_len = 5,
+		.cmd_buff = { 0x00, 0xA0, 8*n, 0, 0 }
+	};
+	uint16_t a=htobe16(addr);
+	memcpy(&z.cmd_buff[3], &a, 2);
+// TODO check 	data_len
+	
+	int r;
+	if( q == AD_Q_SHORT ) {
+		r=gp_send(&z);
+		z.bank=1;
+		z.cmd_buff[0]=0x01;
+		r|=gp_send(&z);
+	} else {
+		r=gp_in_cmd(&z);
+		z.bank=1;
+		z.cmd_buff[0]=0x01;
+		r|=gp_in_cmd(&z);
+	}
+	return r;
+}
+
 int ad_set_token(int q, int gp_dst, uint16_t addr, gp_token_rec_t* data, int n) {
 	cmd_send_t z = {
 		.queue = q,
 		.dst = gp_dst,
 		.ev_handler = 0,
-		.target_n = AD_TARGET_RESET_TOKEN_BOUND,
+		.target_n = AD_TARGET_SET_TOKEN,
 		.cmd_n = 0x05,
 		.bank = 0,
 		.set_timeout = 100,
 		.polling = 0,
-		.data_len = 13,
-		.cmd_buff = { 0x00, 0xA0, 8 }
+		.data_len = 5+8*n,
+		.cmd_buff = { 0x00, 0xA0, 8*n, 0, 0 }
 	};
 	uint16_t a=htobe16(addr);
 	memcpy(&z.cmd_buff[3], &a, 2);
@@ -456,3 +493,51 @@ int ad_set_times(int q, int gp_dst,gp_times_t* t) {
 }
 
 
+
+int ad_get_sched_table(int q, int gp_dst, ev_cbfunc handler) {
+	cmd_send_t z = {
+		.queue = q,
+		.dst = gp_dst,
+		.ev_handler = handler,
+		.target_n = AD_TARGET_GET_SCHED,
+		.cmd_n = 0x04,
+		.bank = 0,
+		.set_timeout = 100,
+		.polling = 0,
+		.data_len = 5,
+		.cmd_buff = { 0x00, 0xA0, 56, 0x00, 0x78}
+	};
+	
+	int r;
+	if( q == AD_Q_SHORT ) {
+		r=gp_send(&z);
+		z.bank=1;
+		z.cmd_buff[0]=0x01;
+		r|=gp_send(&z);
+	} else {
+		r=gp_in_cmd(&z);
+		z.bank=1;
+		z.cmd_buff[0]=0x01;
+		r|=gp_in_cmd(&z);
+	}
+	return r;
+}
+
+int ad_prep_load(int q, int gp_dst, int enable) {
+	cmd_send_t z = {
+		.queue = q,
+		.dst = gp_dst,
+		.ev_handler = 0,
+		.target_n = AD_TARGET_PREP_LOAD,
+		.cmd_n = 0x66,
+		.set_timeout = 100,
+		.polling = 0,
+		.data_len = 1,
+		.cmd_buff = {0x73}
+	};
+	if( enable == 0 ) z.cmd_buff[0]=0;
+	if( q == AD_Q_SHORT ) 
+		return gp_send(&z);
+	else
+		return gp_in_cmd(&z);
+}

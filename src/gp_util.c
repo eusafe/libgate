@@ -4,7 +4,7 @@
  * 
  * Designed by Evgeny Byrganov <eu dot safeschool at gmail dot com> for safeschool.ru, 2012
  *  
- * $Id: gp_util.c 2737 2012-09-26 08:34:54Z eu $
+ * $Id: gp_util.c 2772 2012-11-01 11:46:08Z eu $
  *
  */
 
@@ -219,7 +219,7 @@ int set_rtc_date(int dev) {
 		d.ctrl = 0x10;
 /*	{
 	gp_date_rtc_t *t=&d;
-	fprintf(stderr, "RTC date: %02x-%02x-%02x %02x:%02x:%02x  (%s)\n", 
+	zprintf(6, "RTC date: %02x-%02x-%02x %02x:%02x:%02x  (%s)\n", 
 				t->year, t->mon, t->day, t->hour , t->min, t->sec, (t->stop)? "stopped":"working" );
 	}*/
 	return 	ad_set_date(AD_Q_SECOND, dev, &d);

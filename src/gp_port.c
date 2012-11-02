@@ -4,7 +4,7 @@
  * 
  * Designed by Evgeny Byrganov <eu dot safeschool at gmail dot com> for safeschool.ru, 2012
  *  
- * $Id: gp_port.c 2731 2012-09-14 14:55:56Z eu $
+ * $Id: gp_port.c 2772 2012-11-01 11:46:08Z eu $
  *
  */
 
@@ -27,7 +27,7 @@ int open_port(char* path, int speed);
 
 void gp_close () {
 	if (gp_cfg.fd >= 0) {
-		syslog(LOG_ERR, "closing controller port %m");
+		zprintf(1, "closing controller port %m");
 		if ( event_del(&gp_cfg.evport) < 0) syslog(LOG_ERR, "event_del (port): %m");
 		close(gp_cfg.fd);
 	}
@@ -47,7 +47,7 @@ int gp_reconnect (int ignore_timeout) {
 //	fprintf(stderr, "open_port: %s, %d \n",gp_cfg.port_path, gp_cfg.port_speed); 
 //			if ((gp_cfg.fd = open_port((char*)gp_cfg.port_path, gp_cfg.port_speed, 1)) < 0) {
 			if ((gp_cfg.fd = open_port((char*)gp_cfg.port_path, gp_cfg.port_speed)) < 0) {
-				syslog(LOG_CRIT, "open port (errcode %d): %m", errno);
+				zprintf(1, "open port (errcode %d): %m", errno);
 //				if (portIsOpen == 1) send_switch(GATEKEEPER_NUMERIC_ID | NAGIOS_NUMERIC_ID, ALERT_TTY_USB);
 				portIsOpen=0;
 			} else {

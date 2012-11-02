@@ -1,8 +1,6 @@
 #ifndef _GP_LAYER_H
 #define _GP_LAYER_H 1
 
-
-
 #include <sys/param.h>
 #include <event.h>
 
@@ -10,11 +8,16 @@
 //typedef int (*event_cb)(int st);
 //typedef void (*event_log_cb2)(int severity, const char *msg);
 
-#define GP_SPART_TICKET_BOUND 0x00C0
-#define GP_SPART_TICKET_SIZE 8
+#define GP_TICKET_SIZE 8
+#define GP_START_TICKET_BOUND 0x00C0
+#define GP_MAX_TICKET_BOUND (0x8000 - GP_TICKET_SIZE)
+#define GP_MAX_TICKET_BOUND (0x8000 - GP_TICKET_SIZE)
+//#define GP_MAX_TICKET_BOUND (0x8000 - GP_TICKET_SIZE)
+#define GP_MAX_TICKET_NUM 12 
+
 #define GP_MAX_LOG_BOUND 0x8000
 
-#define GP_DELAY 110
+#define GP_DELAY 140
 
 
 #pragma pack(push,1)
@@ -269,12 +272,22 @@ struct gp_cfg_def {
 };
 extern struct gp_cfg_def  gp_cfg;
 
+struct gp_run_def {
+	int fd;
+	int polling;
+};
+extern struct gp_run_def  gp_run;
+
+
+
 typedef struct gp_dev {
 	int zone_id;
 	int activ;
 	int timeout_count;
 	int is_inited;
 	int cid_revert;
+	uint32_t max_bound_token;
+	uint32_t max_bound_log;
 	uint16_t bound_up;
 	uint16_t bound_down;
 	uint16_t bound_token;

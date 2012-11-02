@@ -37,3 +37,6 @@ libgate.a : $(OBJ)
 clean :
 	-rm *.o  *~ libgate.a
 # DO NOT DELETE
+
+demo: adapter-demo.c  libgate.a 
+	gcc -o adapter-demo adapter-demo.c libgate.a

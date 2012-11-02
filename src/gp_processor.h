@@ -32,6 +32,16 @@ typedef struct  proc_event_t {
 	int dup;
 } proc_event_t;
 
+typedef struct  proc_sched_t {
+	int dev;
+	int subdev;
+	uint8_t wmask;
+	uint8_t begin_hour;
+	uint8_t begin_min;
+	uint8_t end_hour;
+	uint8_t end_min;
+} proc_sched_t;
+
 int process_port_input(int reply);
 
 int cb_get_poll_result(int reply);

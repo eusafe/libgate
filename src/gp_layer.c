@@ -4,7 +4,7 @@
  * 
  * Designed by Evgeny Byrganov <eu dot safeschool at gmail dot com> for safeschool.ru, 2012
  *  
- * $Id: gp_layer.c 2737 2012-09-26 08:34:54Z eu $
+ * $Id: gp_layer.c 2772 2012-11-01 11:46:08Z eu $
  *
  */
 
@@ -48,9 +48,14 @@ struct gp_cfg_def  gp_cfg = {
 //	.last_dev = 0,
 //	.polling = 0,
 	.max_dev_n = 7,
-	.max_timeout_count = 4,
-	.max_bound_token = GP_SPART_TICKET_BOUND,
+	.max_timeout_count = 6,
+	.max_bound_token = GP_START_TICKET_BOUND,
 	.ev_block_size = 8
+};
+struct gp_run_def  gp_run = {
+	.fd = -1,
+//	.polling = 0,
+
 };
 
 #pragma pack(push,1)
@@ -210,6 +215,7 @@ int gp_send_idle() {
 // short event=4;
 int mydev=-1;
 
+int err=0;
 void gp_receiv(int fd, short event, void *arg) {
 	int nread=0;
 //	int last=0;
@@ -220,7 +226,7 @@ void gp_receiv(int fd, short event, void *arg) {
  	uint32_t expect_time=tv2ms(gp_cfg.timeout);
  	uint32_t delta = current_time -  send_mess.sent_time;
  	uint32_t delta2 = current_time -  receiv_mess.last_read;
-/*	if (send_mess.dev == 5 ) 
+/*	if (send_mess.dev == 1 ) 
 	fprintf(stderr, "Got  event (%d): 0x%X, %u.%06u (%u ms), sent time %u ms, current timeout: %u ms, delta: %u ms (%u ms)\n",
 		send_mess.dev,
 		event,
@@ -232,7 +238,6 @@ void gp_receiv(int fd, short event, void *arg) {
 		);*/
 //	char buf[PORT_READ_BUF_LENGTH];
 	
-//	gp_reconnect(1);
 
 //	memset(buf, 0, sizeof(buf));
 				
@@ -249,6 +254,7 @@ void gp_receiv(int fd, short event, void *arg) {
  	if ( event_add(&gp_cfg.evport, &gp_cfg.timeout) < 0) syslog(LOG_ERR, "event_add.send_mess.ev_timeout setup: %m");*/
 	
 	if( (event & EV_READ) == 0 ) {
+		gp_reconnect(0);
 // HACK - we check real timeout, not timer
 //		if( current_time >= expect_time ) {	 	
 //				} else if(gp_cfg.timeout.tv_sec > 0) {
@@ -261,7 +267,7 @@ void gp_receiv(int fd, short event, void *arg) {
 				devices[send_mess.dev].timeout_count++;
 //				if ( send_mess.dev == 1 ) fprintf(stderr, "inc %d dev=%d\n", devices[send_mess.dev].timeout_count, send_mess.dev);
 				if( gp_cfg.polling == 0 ) {
-//				if( send_mess.dev == 5 ) {
+//				if( send_mess.dev == 1 ) {
 //					send_mess.target=0;
 					uint32_t delta3=current_time - devices[send_mess.dev].last_read;
 					fprintf(stderr, "Timeout (%d) for read for %d (cmd=%d, delta=%u)\n", devices[send_mess.dev].timeout_count,
@@ -323,10 +329,11 @@ void gp_receiv(int fd, short event, void *arg) {
 		gp_close();
 		// daemon_exit(1); // never exit on error!
 	} else if (nread == 0) {
-//		syslog(LOG_ERR, "port socket unexpectedly closed");
-	 	fprintf(stderr, "port unexpectedly closed\n");
-//		gp_reconnect(0);
+	 	zprintf(1, "port unexpectedly closed\n");
+	 	ad_soft_reset(AD_Q_SHORT,send_mess.dev);
 		gp_close();
+//		gp_reconnect(0);
+//		if(err++  > 10 ) exit(102);
 		return;
 	} else if (nread > 0) {
 		// right trim buffer
@@ -358,7 +365,7 @@ void gp_receiv(int fd, short event, void *arg) {
 			}
 // Check error!!!
 			if( send_mess.dev !=  receiv_mess.src ) {
-				fprintf(stderr, "device error: got %d, expect %d\n", receiv_mess.src, send_mess.dev);
+				zprintf(2, "device error: got %d, expect %d\n", receiv_mess.src, send_mess.dev);
 //				exit(222);				
 				return;
 			} else {
@@ -372,11 +379,11 @@ void gp_receiv(int fd, short event, void *arg) {
 					process_port_input(PROC_REPLY_ACK);
 				} else if ( receiv_mess.replay == GP_REPLY_NACK ) {
 					receiv_mess.cmd_n=receiv_mess.was_cmd_n;
-					fprintf(stderr, "Got NACK for (0x%02X) \n", receiv_mess.was_cmd_n);
+					zprintf(2, "Got NACK for (0x%02X) \n", receiv_mess.was_cmd_n);
 //					process_port_input(PROC_REPLY_NACK);
 				} else {
 					receiv_mess.cmd_n=receiv_mess.bad_cmd_n;
-					fprintf(stderr, "Got  EEPROM/RTC error (%d)\n",receiv_mess.replay );
+					zprintf(2, "Got  EEPROM/RTC error (%d)\n",receiv_mess.replay );
 //					process_port_input(PROC_REPLY_EEPROM_ERR);
 				}				
 			} else {
@@ -430,9 +437,10 @@ void gp_all_dev_enable(int fd, short event, void *arg) {
 	
 	evutil_timerclear(&gp_cfg.scan_dev_interval);
 	gp_cfg.scan_dev_interval.tv_sec=20;
-	if ( evtimer_add(&gp_cfg.ev_scan_dev, &gp_cfg.scan_dev_interval) < 0) syslog(LOG_ERR, "event_add.evkeep setup: %m");
-	fprintf(stderr, "Reseting activ for all devs. ");
-	fprintf(stderr, "Was mask: 0x%016llX, [%s]\n",  cmd_get_dev_bvector(), cmd_get_dev_vector());
+	if ( evtimer_add(&gp_cfg.ev_scan_dev, &gp_cfg.scan_dev_interval) < 0) 
+		syslog(LOG_ERR, "event_add.evkeep setup: %m");
+	zprintf(7, "Reseting activ for all devs. Was mask: 0x%016llX, [%s]\n",  
+		cmd_get_dev_bvector(), cmd_get_dev_vector());
 	int i;
 	for(i=1;i<=255;i++) {
 		devices[i].timeout_count=0;
@@ -445,13 +453,14 @@ void gp_all_dev_ev(int fd, short event, void *arg) {
  	
 }*/
 int gp_dev_init(int dev) {
-//	gp_times_t times = { 150, 200, 0, 0 };
 	set_rtc_date(dev);
 	ad_set_times(AD_Q_SECOND, dev, &gp_cfg.times);
 	ad_set_token_bound(AD_Q_SECOND, dev, gp_cfg.max_bound_token);
+//	ad_reset_buff(AD_Q_SECOND, dev );
 	
 	ad_get_info(AD_Q_SECOND, dev); // we got the byte order for cid
 	ad_get_token_bound(AD_Q_SECOND, dev, 0);
+	ad_get_times(AD_Q_SECOND, dev );
 	ad_get_date(AD_Q_SECOND, dev);
 	devices[dev].is_inited=1;		
 	return 1;
@@ -461,7 +470,7 @@ int gp_init () {
 	int i;
 	for(i=1;i<=255;i++) {
 //		devices[i].bound_token=0x2000;
-		devices[i].bound_token=GP_SPART_TICKET_BOUND;
+		devices[i].bound_token=GP_START_TICKET_BOUND;
 		devices[i].zone_id = 1;
 	}
  	event_set(&gp_cfg.ev_scan_dev, -1 , EV_TIMEOUT|EV_PERSIST, gp_all_dev_enable, (void*)&gp_cfg.ev_scan_dev);

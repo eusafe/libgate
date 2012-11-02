@@ -43,7 +43,7 @@ int db_init(char* file) {
         db_handler2->err(db_handler2, ret, "Database '%s' open failed.", file);
   	return 0;
   }
-  fprintf(stderr, "databases opened successfully\n");
+  zprintf(4, "databases opened successfully\n");
   return 1;
 }
 
@@ -52,13 +52,13 @@ int db_close() {
   
   ret = db_handler->close(db_handler, 0);
   if( ret != 0) {
-  	fprintf(stderr, "gatedb database close failed: %s\n",  db_strerror(ret));
+  	zprintf(3, "gatedb database close failed: %s\n",  db_strerror(ret));
   	return 0;
   }
   
   ret = db_handler2->close(db_handler2, 0);
   if( ret != 0) {
-  	fprintf(stderr, "mapping database close failed: %s\n",  db_strerror(ret));
+  	zprintf(3, "mapping database close failed: %s\n",  db_strerror(ret));
   	return 0;
   }
   return 1;
@@ -69,12 +69,12 @@ int db_sync() {
   
   ret = db_handler->sync(db_handler, 0);
   if( ret != 0) {
-  	fprintf(stderr, "sync database close failed: %s\n",  db_strerror(ret));
+  	zprintf(7, "sync database close failed: %s\n",  db_strerror(ret));
   	return 0;
   }
   ret = db_handler2->sync(db_handler2, 0);
   if( ret != 0) {
-  	fprintf(stderr, "sync database close failed: %s\n",  db_strerror(ret));
+  	zprintf(7, "sync database close failed: %s\n",  db_strerror(ret));
   	return 0;
   }
   return 1;
@@ -88,7 +88,7 @@ int db_add_token(db_token_rec_t* rec) {
   uint64_t cid = db_get_cid_by_a(rec->addr);
   
   if ( cid  != 0 &&  cid != rec->cid) {
-	fprintf(stderr, "Conflict in db was: 0x%016llX, new:  0x%016llX for addr: 0x%04x\n", cid, rec->cid, rec->addr);
+	zprintf(2, "Conflict in db was: 0x%016llX, new:  0x%016llX for addr: 0x%04x\n", cid, rec->cid, rec->addr);
   	return 0;
   }
 
@@ -123,7 +123,7 @@ int db_add_token(db_token_rec_t* rec) {
   	db_handler2->err(db_handler2, ret, "Put failed");
   	return 0;
   }
-  fprintf(stderr, "Saved rec. cid: 0x%016llX\n",rec->cid);
+  zprintf(4, "Saved rec. cid: 0x%016llX\n",rec->cid);
   db_sync();
   return 1;
 }
@@ -141,7 +141,7 @@ db_token_rec_t* db_get_token_by_c(uint64_t cid) {
   d.ulen=sizeof(db_token_rec_t);
   d.flags = DB_DBT_USERMEM;
   
-  fprintf(stderr,"Search for cid: 0x%016llX\n", cid);
+  zprintf(7,"Search for cid: 0x%016llX\n", cid);
   ret=db_handler->get(db_handler, NULL, &k, &d, 0);
 //  if ( d.data !=  &rec) fprintf(stderr,"d.data = 0x%lx, &rec = 0x%lx\n",d.data, &rec);
   if( ret == DB_NOTFOUND) return 0;
@@ -151,12 +151,12 @@ db_token_rec_t* db_get_token_by_c(uint64_t cid) {
   	return 0;
   }
 // fprintf(stderr,"Got cid: 0x%016llX for 0x%04x, size=%u\n",((db_token_rec_t*)d.data)->cid, rec.addr, d.size );
- fprintf(stderr,"Got cid: 0x%016llX for 0x%04x, size=%u\n",rec.cid, rec.addr, d.size );
+ zprintf(6,"Got cid: 0x%016llX for 0x%04x, size=%u\n",rec.cid, rec.addr, d.size );
   
   return &rec;
 }
 
-uint64_t db_get_cid_by_a(uint16_t addr) {
+uint64_t db_get_cid_by_a(uint32_t addr) {
   DBT k, d;
   int ret;
   uint64_t cid;
@@ -183,7 +183,7 @@ uint64_t db_get_cid_by_a(uint16_t addr) {
   return cid;
 }
 
-db_token_rec_t* db_get_token_by_a(uint16_t addr) {
+db_token_rec_t* db_get_token_by_a(uint32_t addr) {
   uint64_t cid=db_get_cid_by_a(addr);
   
   return db_get_token_by_c(cid);
@@ -199,11 +199,11 @@ int db_get_max_addr() {
   memset(&d, 0, sizeof(DBT));
   db_handler2->cursor(db_handler2, NULL, &cur, 0);
   
-  while ( cur->get(cur, &k, &d, DB_NEXT) == 0) {
+  while ( cur->c_get(cur, &k, &d, DB_NEXT) == 0) {
   	max_addr=MAX(max_addr,*((uint16_t*)k.data));
-  	fprintf(stderr,"check cid: 0x%016llX, addr 0x%04x\n", *(uint64_t*)d.data, *((uint16_t*)k.data));
+  	zprintf(8,"check cid: 0x%016llX, addr 0x%04x\n", *(uint64_t*)d.data, *((uint16_t*)k.data));
   }
-  fprintf(stderr,"max addr 0x%04x\n", max_addr);
+  zprintf(4,"max addr 0x%04x\n", max_addr);
 
   return max_addr;
 }

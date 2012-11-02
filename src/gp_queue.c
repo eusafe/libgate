@@ -4,7 +4,7 @@
  * 
  * Designed by Evgeny Byrganov <eu dot safeschool at gmail dot com> for safeschool.ru, 2012
  *  
- * $Id: gp_queue.c 2692 2012-08-17 13:36:51Z eu $
+ * $Id: gp_queue.c 2772 2012-11-01 11:46:08Z eu $
  *
  */
 
@@ -36,7 +36,7 @@ int gp_in_cmd(cmd_send_t* z) {
 //	if(TAILQ_EMPTY(&gp_head)) fprintf(stderr, "gp_head is empted \n");;
 	en1 = malloc(sizeof(struct gp_queue));
 	if( en1 == NULL ) {
-		fprintf(stderr, "Got malloc NULL \n");
+		zprintf(1, "Got malloc NULL \n");
 		return 0;
 	}
 //	fprintf(stderr, "malloc 0x%lX \n",en1);
@@ -101,13 +101,13 @@ int qdump() {
 	struct gp_circleq*  p=&gp_head;
 	struct gp_queue* i;
 	
-	fprintf(stderr,"qdump, head: 0x%X, tqh_first=0x%X, tqh_last=0x%X\n",
+	zprintf(7,"qdump, head: 0x%X, tqh_first=0x%X, tqh_last=0x%X\n",
 		(uintptr_t)p,
 		(uintptr_t)p->tqh_first,
 		(uintptr_t)p->tqh_last
 	);
 	TAILQ_FOREACH(i,p,entries) {
-		fprintf(stderr,"for 0x%X,   next: 0x%X, prev: 0x%X\n",
+		zprintf(7,"for 0x%X,   next: 0x%X, prev: 0x%X\n",
 			(uintptr_t)i, 
 			(uintptr_t)i->entries.tqe_next,
 			(uintptr_t)i->entries.tqe_prev

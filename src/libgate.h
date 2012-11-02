@@ -4,7 +4,7 @@
  * 
  * Designed by Evgeny Byrganov <eu dot safeschool at gmail dot com> for safeschool.ru, 2012
  *  
- * $Id: libgate.h 2735 2012-09-21 14:31:21Z eu $
+ * $Id: libgate.h 2774 2012-11-01 12:28:32Z eu $
  *
  */
 
@@ -43,7 +43,7 @@
 #define GP_PORT_READ_BUF_LENGTH 135
 
 // #define 
-#define SOCKET_RETRY_TIMEOUT    5       // 5 seconds
+#define SOCKET_RETRY_TIMEOUT    15       // 5 seconds
 
 #define int2bcd(x)  ((((x)/10) << 4) + (x)%10)
 #define bcd2int(x)  ((((x) & 0xF0) >> 4)*10  +  ((x) & 0x0F))
@@ -70,6 +70,7 @@ typedef struct cmd_send_t  {
 #include "db_layer.h"
 #include "gp_processor.h"
 #include "ad_cmd.h"
+#include "gp_util.h"
 
 // Util
 uint8_t crc8_xor(uint8_t* p, int l);
