@@ -51,6 +51,6 @@ int cb_log_read(int reply);
 extern int (*cb_push_new_cid_handler)(proc_add_cid_t rec);
 extern int (*cb_dev_info_handler)(proc_info_t rec);
 extern int (*cb_dev_ev_handler)(proc_event_t rec);
-
+extern int (*cb_push_found_cid_handler)(proc_add_cid_t rec);
 
 #endif /* _GP_PROCESSOR_H */

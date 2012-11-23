@@ -4,7 +4,7 @@
  * 
  * Designed by Evgeny Byrganov <eu dot safeschool at gmail dot com> for safeschool.ru, 2012
  *  
- * $Id: gp_port.c 2772 2012-11-01 11:46:08Z eu $
+ * $Id: gp_port.c 2795 2012-11-08 10:06:24Z eu $
  *
  */
 
@@ -40,7 +40,7 @@ int gp_reconnect (int ignore_timeout) {
 	static time_t last_try=(time_t)0;
 	static int portIsOpen=1; /* '1' Need for first open_port() call problem */
 
-	if (ignore_timeout || (now - SOCKET_RETRY_TIMEOUT > last_try )) {
+	if (ignore_timeout || (now - PORT_RETRY_TIMEOUT > last_try )) {
 		last_try = now;
 		if (gp_cfg.fd < 0) {
 //			dprint(DL5, "trying to [re]connect to controller\n");

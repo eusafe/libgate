@@ -4,7 +4,7 @@
  * 
  * Designed by Evgeny Byrganov <eu dot safeschool at gmail dot com> for safeschool.ru, 2012
  *  
- * $Id: ad_cmd.c 2772 2012-11-01 11:46:08Z eu $
+ * $Id: ad_cmd.c 2822 2012-11-12 13:08:58Z eu $
  *
  */
 
@@ -31,7 +31,7 @@ int cmd_add_cid(proc_add_cid_t rec) {
 	}
 	
 	uint64_t cid2=db_get_cid_by_a(addr);
-	if (  cid2 != rec.token.cid ) {
+	if ( cid2 != 0 && cid2 != rec.token.cid ) {
 		zprintf(3, "Conflict in db was: 0x%016llX, new: 0x%016llX for addr: 0x%04x\n", cid2, rec.token.cid, addr);
 		return 0;
 	}
@@ -73,6 +73,8 @@ int cmd_add_tocken_to_all(ad_token_rec_t in_rec) {
 		
 	} else {
 		memcpy(&rec2.token, rec, sizeof(db_token_rec_t));
+		rec2.token.attr=in_rec.attr;
+		rec2.token.schedule_mask=in_rec.schedule_mask;
 	}
 	
 //	printf("TEST2: rec. cid: 0x%016llX, addr: 0x%04x\n",rec2.token.cid, rec2.token.addr);
@@ -173,6 +175,7 @@ int cmd_get_tocken(int dev, uint16_t addr) {
 	return ad_get_token(AD_Q_FIRST, dev,addr,1);
 }
 
+
 int cmd_clear_dev(int dev) {
 	gp_token_rec_t data[GP_MAX_TICKET_NUM];
 	uint16_t addr=GP_START_TICKET_BOUND;
@@ -226,7 +229,51 @@ int cmd_reset_dev(int dev) {
 	return 1;
 }
 
+int cmd_reload_dev(int dev) {
+	
+	ad_prep_load(AD_Q_FIRST, dev, 1);
+	db_token_rec_t* token=db_get_next_token(1);
+	zprintf(3,"db_get_next_token\n");
+	
+	while( token > 0 ) {
+		gp_token_rec_t t2;	
+		memset(&t2, 0, sizeof(gp_token_rec_t));
+		int2bin(t2.cid, token->cid, 6, devices[dev].cid_revert);
+		t2.attr=token->attr; 
+		t2.schedule_mask=token->schedule_mask;
+	
+
+		zprintf(3,"Writing into  dev(%d) - cid: 0x%012llX, addr=0x%04X, mask=0x%02X, attr=0x%02X\n", 
+			dev, token->cid, token->addr, token->schedule_mask, token->attr);
+		ad_set_token(AD_Q_FIRST, dev,token-> addr, &t2, 1);
+// next		
+		token=db_get_next_token(0);
+	}
+/*	gp_cfg.max_bound_token=GP_MAX_TICKET_BOUND;
+	devices[dev].bound_token=GP_MAX_TICKET_BOUND;
+	ad_set_token_bound(AD_Q_FIRST, dev, devices[dev].bound_token);*/
+	
+	ad_prep_load(AD_Q_FIRST, dev, 0);
+	return 1;
+}
+
+int cmd_saving_sched(uint16_t rule_id,	uint8_t zone_id, uint8_t schedule_mask, ad_sched_rec_t* recs, int amount) {
+	int i=0;
+	
+	for(i=0;i<amount;i++) {
+		db_add_param_sched(zone_id,recs[i]);
+		zprintf(4,"N: %d :wmask: 0x%02x, begin: %d, end: %d [0x%02X]\n",  
+			recs[i].num, recs[i].wmask, recs[i].begin, recs[i].end, schedule_mask);
+	}
+	db_add_param_rule(rule_id,zone_id,schedule_mask);
+
+	return 1;
+}
+
+
 int cmd_get_33() {
 
 	return 1;
 }
+
+

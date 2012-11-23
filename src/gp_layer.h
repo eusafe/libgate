@@ -18,7 +18,7 @@
 #define GP_MAX_LOG_BOUND 0x8000
 
 #define GP_DELAY 140
-
+#define GP_AMOUNT_SCHED 7
 
 #pragma pack(push,1)
 struct send_mess_def {

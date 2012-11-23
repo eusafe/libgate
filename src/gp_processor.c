@@ -4,7 +4,7 @@
  * 
  * Designed by Evgeny Byrganov <eu dot safeschool at gmail dot com> for safeschool.ru, 2012
  *  
- * $Id: gp_processor.c 2772 2012-11-01 11:46:08Z eu $
+ * $Id: gp_processor.c 2856 2012-11-23 13:29:04Z eu $
  *
  */
 
@@ -21,15 +21,27 @@
 #include "libgate.h"
 
 int cb_push_new_cid_default (proc_add_cid_t rec) {
+	zprintf(4, "dev: %u, subdev: %u, ev: 0x%02x, cid: 0x%016llX\n", 
+ 			rec.dev, rec.subdev, rec.ev, rec.token.cid );
+	
 	zprintf(8,"Writing  cid in all devs\n");
 	
 	rec.token.schedule_mask=0xFF;
 	rec.token.attr=0;
 	return cmd_add_cid_to_all(rec);
 }
+int cb_push_found_cid_default (proc_add_cid_t rec) {
+	zprintf(4, "dev: %u, subdev: %u, ev: 0x02x, cid: 0x%016llX\n", 
+ 			rec.dev, rec.subdev, rec.ev, rec.token.cid );
+	return 1;
+}
+
+char* if_types_str[]={ "touch memory", "Wiegand", "ABA2", "Unknow" };
+
 int cb_dev_info_default(proc_info_t rec) {
-	zprintf(4, "dev: %d, ver: 0x%02x, release=%d, model: 0x%x, if_type: %u\n", 
- 			rec.dev, rec.ver, rec.release, rec.model, rec.if_type );
+	int if_type =(rec.if_type >=0 &&  rec.if_type  < 3 )? rec.if_type:3;
+	zprintf(4, "dev: %d, ver: 0x%02x, release=%d, model: 0x%x, if_type: %s (%u)\n", 
+ 			rec.dev, rec.ver, rec.release, rec.model, if_types_str[if_type], if_type);
 	return 1;
 }
 
@@ -46,6 +58,7 @@ int cb_dev_sched_default() {
 }
 
 int (*cb_push_new_cid_handler)(proc_add_cid_t rec) = &cb_push_new_cid_default;
+int (*cb_push_found_cid_handler)(proc_add_cid_t rec) = &cb_push_found_cid_default;
 int (*cb_dev_info_handler)(proc_info_t rec) = &cb_dev_info_default;
 int (*cb_dev_ev_handler)(proc_event_t rec) = &cb_dev_ev_default;
 //int (*cb_dev_sched_default)() = &cb_dev_sched_default;
@@ -96,6 +109,16 @@ int cb_get_poll_result(int reply) {
 					cb_push_new_cid_handler(tt);
 				}
 // TODO 				
+			} else
+			if( (t->ev & ~1 ) == 0x04 ) {
+				proc_add_cid_t tt = { 
+					.dev = receiv_mess.dev,
+					.subdev = t->ev & 1,
+//					.cid = devices[receiv_mess.dev].last_cid,
+					.ev = t->ev
+				};
+				tt.token.cid = devices[receiv_mess.dev].last_cid;
+				cb_push_found_cid_handler(tt);
 			}
 		}
 		devices[receiv_mess.dev].last_ev=t->ev;

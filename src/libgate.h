@@ -4,7 +4,7 @@
  * 
  * Designed by Evgeny Byrganov <eu dot safeschool at gmail dot com> for safeschool.ru, 2012
  *  
- * $Id: libgate.h 2774 2012-11-01 12:28:32Z eu $
+ * $Id: libgate.h 2795 2012-11-08 10:06:24Z eu $
  *
  */
 
@@ -43,7 +43,7 @@
 #define GP_PORT_READ_BUF_LENGTH 135
 
 // #define 
-#define SOCKET_RETRY_TIMEOUT    15       // 5 seconds
+#define PORT_RETRY_TIMEOUT    15       // 5 seconds
 
 #define int2bcd(x)  ((((x)/10) << 4) + (x)%10)
 #define bcd2int(x)  ((((x) & 0xF0) >> 4)*10  +  ((x) & 0x0F))

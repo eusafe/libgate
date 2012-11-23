@@ -13,4 +13,13 @@ typedef struct ad_token_rec_t {
 	uint64_t zone_mask;
 } ad_token_rec_t;
 
+typedef struct ad_sched_rec_t {
+//	uint16_t rule_id;
+//	uint8_t zone_id;
+	int num;
+	uint8_t wmask;
+	int begin;
+	int end;
+} ad_sched_rec_t;
+
 #endif /* _AD_CMD_H */

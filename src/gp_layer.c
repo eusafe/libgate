@@ -4,7 +4,7 @@
  * 
  * Designed by Evgeny Byrganov <eu dot safeschool at gmail dot com> for safeschool.ru, 2012
  *  
- * $Id: gp_layer.c 2772 2012-11-01 11:46:08Z eu $
+ * $Id: gp_layer.c 2794 2012-11-08 10:05:55Z eu $
  *
  */
 
@@ -360,7 +360,7 @@ void gp_receiv(int fd, short event, void *arg) {
 				syslog(LOG_ERR, "crc8 error for %d (cmd=%d, crc=x0%02x) \n", send_mess.dev, send_mess.target, crc);
 				if( debug < 9 ) 
 					print_buff("port received (crc error): ", receiv_mess.buf, nread+receiv_mess.len);
-				exit(222);
+//				exit(222);
 				return;
 			}
 // Check error!!!
@@ -466,8 +466,11 @@ int gp_dev_init(int dev) {
 	return 1;
 }
 
-int gp_init () {
+int gp_init (char* port_path) {
 	int i;
+	
+	if( port_path != 0 ) strncpy(gp_cfg.port_path, (char*)port_path, MAXPATHLEN);
+	
 	for(i=1;i<=255;i++) {
 //		devices[i].bound_token=0x2000;
 		devices[i].bound_token=GP_START_TICKET_BOUND;

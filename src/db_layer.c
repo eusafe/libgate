@@ -17,7 +17,8 @@
 #include "libgate.h"
 
 DB *db_handler;
-DB *db_handler2;
+DB *db_handler_by_addr;
+DB *db_handler_param;
 
 int db_init(char* file) {
   int ret;
@@ -32,17 +33,29 @@ int db_init(char* file) {
         db_handler->err(db_handler, ret, "Database '%s' open failed.", file);
   	return 0;
   }
-//  db_handler2=db_handler;
-  ret=db_create(&db_handler2,NULL,0);
+//  db_handler_by_addr
+  ret=db_create(&db_handler_by_addr,NULL,0);
   if( ret != 0) {
   	return 0;
   }
   
-  ret = db_handler2->open(db_handler2, NULL, file, "mapping", DB_BTREE, DB_CREATE, 0);
+  ret = db_handler_by_addr->open(db_handler_by_addr, NULL, file, "mapping", DB_BTREE, DB_CREATE, 0);
   if( ret != 0) {
-        db_handler2->err(db_handler2, ret, "Database '%s' open failed.", file);
+        db_handler_by_addr->err(db_handler_by_addr, ret, "Database '%s' open failed.", file);
   	return 0;
   }
+//   db_handler_param
+  ret=db_create(&db_handler_param,NULL,0);
+  if( ret != 0) {
+  	return 0;
+  }
+  
+  ret = db_handler_param->open(db_handler_param, NULL, file, "param", DB_BTREE, DB_CREATE, 0);
+  if( ret != 0) {
+        db_handler_param->err(db_handler_param, ret, "Database '%s' open failed.", file);
+  	return 0;
+  }
+  
   zprintf(4, "databases opened successfully\n");
   return 1;
 }
@@ -56,11 +69,20 @@ int db_close() {
   	return 0;
   }
   
-  ret = db_handler2->close(db_handler2, 0);
+//  db_handler_by_addr
+  ret = db_handler_by_addr->close(db_handler_by_addr, 0);
   if( ret != 0) {
   	zprintf(3, "mapping database close failed: %s\n",  db_strerror(ret));
   	return 0;
   }
+
+//   db_handler_param
+  ret = db_handler_param->close(db_handler_param, 0);
+  if( ret != 0) {
+  	zprintf(3, "mapping database close failed: %s\n",  db_strerror(ret));
+  	return 0;
+  }
+  
   return 1;
 }
 
@@ -72,7 +94,12 @@ int db_sync() {
   	zprintf(7, "sync database close failed: %s\n",  db_strerror(ret));
   	return 0;
   }
-  ret = db_handler2->sync(db_handler2, 0);
+  ret = db_handler_by_addr->sync(db_handler_by_addr, 0);
+  if( ret != 0) {
+  	zprintf(7, "sync database close failed: %s\n",  db_strerror(ret));
+  	return 0;
+  }
+  ret = db_handler_param->sync(db_handler_param, 0);
   if( ret != 0) {
   	zprintf(7, "sync database close failed: %s\n",  db_strerror(ret));
   	return 0;
@@ -80,7 +107,11 @@ int db_sync() {
   return 1;
 }
 
-
+/*
+*
+*
+*
+*/
 
 int db_add_token(db_token_rec_t* rec) {
   DBT k, d;
@@ -118,9 +149,9 @@ int db_add_token(db_token_rec_t* rec) {
   d.data=&rec->cid;
   d.size=sizeof(uint64_t);
   
-  ret=db_handler2->put(db_handler2,NULL,&k,&d,0);
+  ret=db_handler_by_addr->put(db_handler_by_addr,NULL,&k,&d,0);
   if( ret != 0) {
-  	db_handler2->err(db_handler2, ret, "Put failed");
+  	db_handler_by_addr->err(db_handler_by_addr, ret, "Put failed");
   	return 0;
   }
   zprintf(4, "Saved rec. cid: 0x%016llX\n",rec->cid);
@@ -174,10 +205,10 @@ uint64_t db_get_cid_by_a(uint32_t addr) {
   d.ulen=sizeof(uint64_t);
   d.flags = DB_DBT_USERMEM;
   
-  ret=db_handler2->get(db_handler2,NULL,&k,&d,0);
+  ret=db_handler_by_addr->get(db_handler_by_addr,NULL,&k,&d,0);
   if( ret == DB_NOTFOUND) return 0;
   if( ret != 0) {
-  	db_handler2->err(db_handler2, ret, "Get2 cid failed");
+  	db_handler_by_addr->err(db_handler_by_addr, ret, "Get2 cid failed");
   	return 0;
   }
   return cid;
@@ -192,12 +223,12 @@ db_token_rec_t* db_get_token_by_a(uint32_t addr) {
 
 int db_get_max_addr() {
   DBT k, d;
-  DBC* cur;
+  DBC* cur=0;
   int max_addr=0x00C0 - sizeof(gp_token_rec_t);
   
   memset(&k, 0, sizeof(DBT));
   memset(&d, 0, sizeof(DBT));
-  db_handler2->cursor(db_handler2, NULL, &cur, 0);
+  db_handler_by_addr->cursor(db_handler_by_addr, NULL, &cur, 0);
   
   while ( cur->c_get(cur, &k, &d, DB_NEXT) == 0) {
   	max_addr=MAX(max_addr,*((uint16_t*)k.data));
@@ -206,4 +237,69 @@ int db_get_max_addr() {
   zprintf(4,"max addr 0x%04x\n", max_addr);
 
   return max_addr;
+}
+
+db_token_rec_t*  db_get_next_token(int fisrt) {
+  static DBT k, d;
+  static DBC* cur=0;
+  uint32_t flag=DB_NEXT;
+  
+  if(cur == 0) {
+	memset(&k, 0, sizeof(DBT));
+	memset(&d, 0, sizeof(DBT));
+	db_handler->cursor(db_handler, NULL, &cur, 0);
+  }
+  if(fisrt) flag=DB_FIRST;
+    
+  if( cur->c_get(cur, &k, &d, flag) == 0) {
+  	return (db_token_rec_t*)d.data;
+  }
+  
+  return 0;
+}
+
+int db_add_param(db_param_key_t* rec,void* buff, int len) {
+  DBT k, d;
+  int ret;
+//  uint64_t cid = db_get_cid_by_a(rec->addr);
+  
+
+  memset(&k, 0, sizeof(DBT));
+  memset(&d, 0, sizeof(DBT));
+  k.data=rec;
+  k.size=sizeof(db_param_key_t);
+  d.data=buff;
+  d.size=len;
+  
+  ret=db_handler_param->put(db_handler_param,NULL,&k,&d,0);
+  if( ret != 0) {
+  	db_handler_param->err(db_handler_param, ret, "Put failed");
+  	return 0;
+  }
+  
+  zprintf(4, "Saved param (%u) \n", rec->param_id);
+  db_sync();
+  return 1;
+}
+
+int db_add_param_rule(uint16_t rule_id,	uint8_t zone_id, uint8_t schedule_mask) {
+  db_param_key_t k = { 
+//  	.rule = { .rule_id = rule_id, .zone_id = zone_id },
+  	.param_id = PARAM_ID_RULE
+  	};
+  k.rule.rule_id=rule_id;
+  k.rule.zone_id=zone_id;
+  db_param_rule_value_t d = { .schedule_mask = schedule_mask };
+  
+  return db_add_param(&k,&d,sizeof(db_param_rule_value_t));
+}
+
+int db_add_param_sched(uint8_t zone_id, ad_sched_rec_t d)  {
+  db_param_key_t k = { 
+  	.param_id = PARAM_ID_SCHED
+  	};
+  k.sched.zone_id=zone_id;
+  k.sched.num = d.num;
+  
+  return db_add_param(&k,&d,sizeof(db_param_sched_value_t));
 }
