@@ -523,6 +523,40 @@ int ad_get_sched_table(int q, int gp_dst, ev_cbfunc handler) {
 	return r;
 }
 
+int ad_set_sched_rec(int q, int gp_dst, int num, gp_time_zone_t rec, ev_cbfunc handler) {
+	cmd_send_t z = {
+		.queue = q,
+		.dst = gp_dst,
+		.ev_handler = handler,
+		.target_n = AD_TARGET_SET_SCHED,
+		.cmd_n = 0x05,
+		.bank = 0,
+		.set_timeout = 100,
+		.polling = 0,
+		.data_len = 5 + sizeof(gp_time_zone_t),
+		.cmd_buff = { 0x00, 0xA0, sizeof(gp_time_zone_t), 0x00, 0x78}
+	};
+//	gp_time_zone_t* p=(gp_time_zone_t*)0x0078;
+	uint16_t a=htobe16( (uint16_t)(0x0078 + sizeof(gp_time_zone_t)*num));
+	memcpy(&z.cmd_buff[3], &a, 2);	
+	memcpy(&z.cmd_buff[5], (void *)&rec, sizeof(gp_time_zone_t));
+	
+	
+	int r;
+	if( q == AD_Q_SHORT ) {
+		r=gp_send(&z);
+		z.bank=1;
+		z.cmd_buff[0]=0x01;
+		r|=gp_send(&z);
+	} else {
+		r=gp_in_cmd(&z);
+		z.bank=1;
+		z.cmd_buff[0]=0x01;
+		r|=gp_in_cmd(&z);
+	}
+	return r;
+}
+
 int ad_prep_load(int q, int gp_dst, int enable) {
 	cmd_send_t z = {
 		.queue = q,

@@ -257,6 +257,32 @@ int cmd_reload_dev(int dev) {
 	return 1;
 }
 
+int cmd_saving_sched_to_all(ad_sched_rec_t r) {
+	int gp_dst;
+	int n=r.num -1;
+	if( n < 0 || n > 6 ) {
+		return 0;
+	}
+ 	
+	gp_time_zone_t t = {
+		.wmask = r.wmask,
+		.stub = {0,0,0}
+	};
+	int mi = r.begin/60;
+	t.begin_hour = int2bcd(mi / 60);
+	t.begin_min = int2bcd(mi % 60);
+	mi = r.end/60;
+	t.end_hour = int2bcd(mi / 60);
+	t.end_min = int2bcd(mi % 60);
+	for(gp_dst=1;gp_dst<=gp_cfg.max_dev_n;gp_dst++) {
+		if( devices[gp_dst].activ == 1 ) {
+			ad_set_sched_rec(AD_Q_FIRST, gp_dst, n, t, 0);
+		}
+	}
+	return 1;
+
+}
+
 int cmd_saving_sched(uint16_t rule_id,	uint8_t zone_id, uint8_t schedule_mask, ad_sched_rec_t* recs, int amount) {
 	int i=0;
 	
@@ -264,6 +290,7 @@ int cmd_saving_sched(uint16_t rule_id,	uint8_t zone_id, uint8_t schedule_mask, a
 		db_add_param_sched(zone_id,recs[i]);
 		zprintf(4,"N: %d :wmask: 0x%02x, begin: %d, end: %d [0x%02X]\n",  
 			recs[i].num, recs[i].wmask, recs[i].begin, recs[i].end, schedule_mask);
+		cmd_saving_sched_to_all(recs[i]);
 	}
 	db_add_param_rule(rule_id,zone_id,schedule_mask);
 

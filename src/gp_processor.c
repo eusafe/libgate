@@ -169,7 +169,7 @@ int cb_log_read(int reply) {
 				memcpy(&devices[receiv_mess.dev].last_ev_rec, t, sizeof(gp_event_t));
 /*				db_token_rec_t* token = db_get_token_by_a(htobe16(t->addr));
 				uint64_t cid = (token)? token->cid:0;*/
-				uint64_t cid = db_get_cid_by_a(htobe16(t->addr));
+				uint64_t cid = db_get_cid_by_a((uint32_t)htobe16(t->addr));
 				proc_event_t rec = {
 					.dev = receiv_mess.dev,
 					.subdev = t->ev_code & 1,

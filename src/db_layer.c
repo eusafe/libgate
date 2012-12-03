@@ -16,21 +16,24 @@
 
 #include "libgate.h"
 
-DB *db_handler;
+DB *db_handle_token;
+char a1[5];
 DB *db_handler_by_addr;
+char a1[5];
 DB *db_handler_param;
+char a1[5];
 
 int db_init(char* file) {
   int ret;
   
-  ret=db_create(&db_handler,NULL,0);
+  ret=db_create(&db_handle_token,NULL,0);
   if( ret != 0) {
   	return 0;
   }
   
-  ret = db_handler->open(db_handler, NULL, file, "token", DB_BTREE, DB_CREATE, 0);
+  ret = db_handle_token->open(db_handle_token, NULL, file, "token", DB_BTREE, DB_CREATE, 0);
   if( ret != 0) {
-        db_handler->err(db_handler, ret, "Database '%s' open failed.", file);
+        db_handle_token->err(db_handle_token, ret, "Database '%s' open failed.", file);
   	return 0;
   }
 //  db_handler_by_addr
@@ -57,13 +60,14 @@ int db_init(char* file) {
   }
   
   zprintf(4, "databases opened successfully\n");
+  db_sync();
   return 1;
 }
 
 int db_close() {
   int ret;
   
-  ret = db_handler->close(db_handler, 0);
+  ret = db_handle_token->close(db_handle_token, 0);
   if( ret != 0) {
   	zprintf(3, "gatedb database close failed: %s\n",  db_strerror(ret));
   	return 0;
@@ -89,7 +93,7 @@ int db_close() {
 int db_sync() {
   int ret;
   
-  ret = db_handler->sync(db_handler, 0);
+  ret = db_handle_token->sync(db_handle_token, 0);
   if( ret != 0) {
   	zprintf(7, "sync database close failed: %s\n",  db_strerror(ret));
   	return 0;
@@ -131,9 +135,9 @@ int db_add_token(db_token_rec_t* rec) {
   d.data=rec;
   d.size=sizeof(db_token_rec_t);
   
-  ret=db_handler->put(db_handler,NULL,&k,&d,0);
+  ret=db_handle_token->put(db_handle_token,NULL,&k,&d,0);
   if( ret != 0) {
-  	db_handler->err(db_handler, ret, "Put failed");
+  	db_handle_token->err(db_handle_token, ret, "Put failed");
   	return 0;
   }
   
@@ -173,12 +177,12 @@ db_token_rec_t* db_get_token_by_c(uint64_t cid) {
   d.flags = DB_DBT_USERMEM;
   
   zprintf(7,"Search for cid: 0x%016llX\n", cid);
-  ret=db_handler->get(db_handler, NULL, &k, &d, 0);
+  ret=db_handle_token->get(db_handle_token, NULL, &k, &d, 0);
 //  if ( d.data !=  &rec) fprintf(stderr,"d.data = 0x%lx, &rec = 0x%lx\n",d.data, &rec);
   if( ret == DB_NOTFOUND) return 0;
 /*  if( rec.cid  == 0 ) return 0;*/
   if( ret != 0) {
-  	db_handler->err(db_handler, ret, "Get cid failed");
+  	db_handle_token->err(db_handle_token, ret, "Get cid failed");
   	return 0;
   }
 // fprintf(stderr,"Got cid: 0x%016llX for 0x%04x, size=%u\n",((db_token_rec_t*)d.data)->cid, rec.addr, d.size );
@@ -247,7 +251,7 @@ db_token_rec_t*  db_get_next_token(int fisrt) {
   if(cur == 0) {
 	memset(&k, 0, sizeof(DBT));
 	memset(&d, 0, sizeof(DBT));
-	db_handler->cursor(db_handler, NULL, &cur, 0);
+	db_handle_token->cursor(db_handle_token, NULL, &cur, 0);
   }
   if(fisrt) flag=DB_FIRST;
     
@@ -273,13 +277,41 @@ int db_add_param(db_param_key_t* rec,void* buff, int len) {
   
   ret=db_handler_param->put(db_handler_param,NULL,&k,&d,0);
   if( ret != 0) {
-  	db_handler_param->err(db_handler_param, ret, "Put failed");
+  	db_handler_param->err(db_handler_param, ret, "Put param failed");
   	return 0;
   }
   
   zprintf(4, "Saved param (%u) \n", rec->param_id);
   db_sync();
   return 1;
+}
+
+//int 
+void* db_get_param(db_param_key_t* rec, void* buff, int len) {
+  DBT k, d;
+  int ret;
+//  uint64_t cid = db_get_cid_by_a(rec->addr);
+  
+
+  memset(&k, 0, sizeof(DBT));
+  memset(&d, 0, sizeof(DBT));
+  k.data=rec;
+  k.size=sizeof(db_param_key_t);
+  d.data=buff;
+  d.size=len;
+//  d.flags = DB_DBT_USERMEM;
+  
+  ret=db_handler_param->get(db_handler_param,NULL,&k,&d,0);
+  if( ret == DB_NOTFOUND) return 0;
+  if( ret != 0) {
+  	db_handler_param->err(db_handler_param, ret, "Get param failed");
+  	return 0;
+  }
+  
+  zprintf(4, "Restored param (%u) \n", rec->param_id);
+//  db_sync();
+  return d.data;
+//  return 1;
 }
 
 int db_add_param_rule(uint16_t rule_id,	uint8_t zone_id, uint8_t schedule_mask) {
@@ -292,6 +324,29 @@ int db_add_param_rule(uint16_t rule_id,	uint8_t zone_id, uint8_t schedule_mask) 
   db_param_rule_value_t d = { .schedule_mask = schedule_mask };
   
   return db_add_param(&k,&d,sizeof(db_param_rule_value_t));
+}
+
+uint8_t db_get_param_rule(uint16_t rule_id, uint8_t zone_id) {
+  if( rule_id < 100) return 0xFF;
+  
+  db_param_key_t k = { 
+//  	.rule = { .rule_id = rule_id, .zone_id = zone_id },
+  	.param_id = PARAM_ID_RULE
+  	};
+  k.rule.rule_id=rule_id;
+  k.rule.zone_id=zone_id;
+//  uint8_t d[255];
+  db_param_rule_value_t* d=db_get_param(&k,NULL,sizeof(db_param_rule_value_t));
+  if( d == 0 ) return 0;
+  uint8_t sm= d->schedule_mask;
+//  free(d);
+  return sm;
+//  int r=db_get_param(&k,d,255);
+//  return d[0];
+//  db_param_rule_value_t d = { .schedule_mask = 0 };
+//  int r=db_get_param(&k,&d,sizeof(db_param_rule_value_t));
+//  if( r==0 ) return 0;
+//  return d.schedule_mask;
 }
 
 int db_add_param_sched(uint8_t zone_id, ad_sched_rec_t d)  {
